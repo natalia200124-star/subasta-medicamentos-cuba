@@ -20,8 +20,8 @@ st_autorefresh(interval=2000, key="autorefresh")
 # ==============================
 # LINKS CSV (PEGA AQUÍ LOS TUYOS)
 # ==============================
-CSV_DONACIONES = "PEGA_AQUI_TU_CSV_DONACIONES"
-CSV_METAS = "PEGA_AQUI_TU_CSV_METAS"
+CSV_DONACIONES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT2zRpYc-c3ZznxlPo51_k-5W3mNMzsxl8zlUzxCtugfc2ONIK_C-ht1DzKCR6vy2f1YSnwBx8umQxs/pub?gid=1533440022&single=true&output=csv"
+CSV_METAS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT2zRpYc-c3ZznxlPo51_k-5W3mNMzsxl8zlUzxCtugfc2ONIK_C-ht1DzKCR6vy2f1YSnwBx8umQxs/pub?gid=199575778&single=true&output=csv"
 
 # ==============================
 # ESTILO PREMIUM

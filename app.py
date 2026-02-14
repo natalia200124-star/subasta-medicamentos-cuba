@@ -29,7 +29,7 @@ CSV_METAS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT2zRpYc-c3ZznxlPo5
 st.markdown("""
 <style>
 body {
-    background-color: #0b0f17;
+    background: radial-gradient(circle at top, #121b2e 0%, #070a12 70%);
     color: white;
     font-family: 'Segoe UI', sans-serif;
 }
@@ -158,49 +158,81 @@ body {
 }
 
 /* ==============================
-   TARJETA MEDICAMENTO CON IMAGEN RELLENABLE
+   NUEVO DISEÑO PREMIUM MEDICAMENTOS
 ============================== */
-.med-visual-container {
-    position: relative;
-    width: 100%;
-    height: 180px;
-    border-radius: 18px;
-    overflow: hidden;
+.med-card {
+    background: linear-gradient(145deg, #131a29, #0b0f17);
+    border-radius: 22px;
+    padding: 18px;
     border: 1px solid rgba(255,255,255,0.10);
-    background: rgba(255,255,255,0.03);
-    margin-top: 12px;
+    box-shadow: 0px 0px 25px rgba(0,0,0,0.65);
+    transition: all 0.25s ease-in-out;
+    min-height: 320px;
+    margin-bottom: 16px;
 }
 
-.med-fill-layer {
-    position: absolute;
-    bottom: 0;
+.med-card:hover {
+    transform: translateY(-4px);
+    border: 1px solid rgba(0, 220, 255, 0.35);
+    box-shadow: 0px 0px 40px rgba(0,0,0,0.75);
+}
+
+.med-img {
     width: 100%;
-    background: linear-gradient(180deg, rgba(0, 220, 255, 0.95), rgba(0, 110, 255, 0.65));
-    transition: height 1.0s ease-in-out;
-    filter: blur(0.2px);
-}
-
-.med-svg-layer {
-    position: absolute;
-    inset: 0;
+    height: 130px;
+    border-radius: 18px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
     display: flex;
     justify-content: center;
     align-items: center;
-    opacity: 0.95;
+    margin-bottom: 14px;
 }
 
-.med-info-layer {
-    position: absolute;
-    bottom: 10px;
-    left: 10px;
-    right: 10px;
-    padding: 8px 10px;
-    border-radius: 14px;
-    background: rgba(0,0,0,0.55);
-    border: 1px solid rgba(255,255,255,0.10);
+.med-name {
+    font-size: 18px;
+    font-weight: 900;
+    margin-bottom: 8px;
+}
+
+.med-meta {
+    font-size: 13px;
+    opacity: 0.75;
+    margin-bottom: 10px;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 12px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.08);
+    overflow: hidden;
+    margin-top: 8px;
+    margin-bottom: 12px;
+}
+
+.progress-fill {
+    height: 100%;
+    border-radius: 10px;
+    background: linear-gradient(90deg, rgba(0,220,255,0.95), rgba(0,110,255,0.75));
+    transition: width 0.9s ease-in-out;
+}
+
+.progress-percent {
+    font-size: 14px;
+    font-weight: 800;
+    margin-bottom: 6px;
+}
+
+.status-pill {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 16px;
     font-size: 12px;
     font-weight: 800;
-    text-align: center;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    margin-top: 10px;
 }
 
 </style>
@@ -269,25 +301,6 @@ def obtener_svg_medicamento(nombre):
         <rect x="65" y="50" width="70" height="110" rx="18" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.35)" stroke-width="4"/>
         <rect x="75" y="25" width="50" height="35" rx="10" fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.35)" stroke-width="4"/>
     </svg>
-    """
-
-
-def generar_visual_medicamento(porcentaje, medicamento, cantidad, meta):
-    porcentaje = max(0, min(porcentaje, 100))
-    svg = obtener_svg_medicamento(medicamento)
-
-    return f"""
-    <div class="med-visual-container">
-        <div class="med-fill-layer" style="height:{porcentaje}%;"></div>
-
-        <div class="med-svg-layer">
-            {svg}
-        </div>
-
-        <div class="med-info-layer">
-            {formatear_numero(cantidad)} / {formatear_numero(meta)} ({porcentaje:.1f}%)
-        </div>
-    </div>
     """
 
 
@@ -375,11 +388,11 @@ donaciones_largo = donaciones_largo[donaciones_largo["cantidad"] > 0]
 # ==============================
 # CALCULOS PRINCIPALES
 # ==============================
-avance = donaciones_largo.groupby("medicamento", as_index=False)["cantidad"].sum()
-
 metas_temp = metas.copy()
 metas_temp["medicamento"] = metas_temp["medicamento"].astype(str).str.strip().str.lower()
+metas_temp["meta"] = pd.to_numeric(metas_temp["meta"], errors="coerce").fillna(0)
 
+avance = donaciones_largo.groupby("medicamento", as_index=False)["cantidad"].sum()
 avance = avance.merge(metas_temp, on="medicamento", how="left")
 avance["meta"] = avance["meta"].fillna(0)
 
@@ -399,6 +412,24 @@ ultimas = donaciones_largo.sort_values("fecha_hora", ascending=False).head(10)
 donacion_mas_grande = donaciones_largo.loc[donaciones_largo["cantidad"].idxmax()] if len(donaciones_largo) > 0 else None
 
 # ==============================
+# CREAR AVANCE COMPLETO (MUESTRA TODOS LOS MEDICAMENTOS)
+# ==============================
+donado_por_med = donaciones_largo.groupby("medicamento", as_index=False)["cantidad"].sum()
+
+avance_completo = metas_temp.merge(donado_por_med, on="medicamento", how="left")
+avance_completo["cantidad"] = avance_completo["cantidad"].fillna(0)
+
+avance_completo["porcentaje"] = avance_completo.apply(
+    lambda row: (row["cantidad"] / row["meta"] * 100) if row["meta"] > 0 else 0,
+    axis=1
+)
+
+avance_completo = avance_completo.sort_values("porcentaje", ascending=False)
+
+# Para mostrar nombres originales como están en metas
+map_nombre_original = dict(zip(metas_temp["medicamento"], metas["medicamento"]))
+
+# ==============================
 # HEADER CORPORATIVO
 # ==============================
 st.markdown(f"""
@@ -413,10 +444,10 @@ st.markdown(f"""
 # ==============================
 # CELEBRACIÓN 100%
 # ==============================
-completados = avance[avance["porcentaje"] >= 100]
+completados = avance_completo[avance_completo["porcentaje"] >= 100]
 
 if len(completados) > 0:
-    meds = ", ".join(completados["medicamento"].tolist())
+    meds = ", ".join([map_nombre_original.get(m, m) for m in completados["medicamento"].tolist()])
     st.markdown(f"""
     <div class="celebration">Meta alcanzada: {meds}</div>
     """, unsafe_allow_html=True)
@@ -467,19 +498,16 @@ st.progress(min(porcentaje_total / 100, 1.0))
 st.divider()
 
 # ==============================
-# AVANCE POR MEDICAMENTO CON IMAGEN ANIMADA RELLENABLE
+# AVANCE POR MEDICAMENTO (TARJETAS PREMIUM)
 # ==============================
 st.markdown("## Avance por medicamento")
 
 cols = st.columns(3)
 
-# Para mostrar nombres originales como están en metas
-map_nombre_original = dict(zip(metas_temp["medicamento"], metas["medicamento"]))
-
-for i, r in enumerate(avance.sort_values("porcentaje", ascending=False).to_dict("records")):
-    porcentaje = r["porcentaje"]
-    cantidad = r["cantidad"]
-    meta = r["meta"]
+for i, r in enumerate(avance_completo.to_dict("records")):
+    porcentaje = float(r["porcentaje"])
+    cantidad = float(r["cantidad"])
+    meta = float(r["meta"])
     med = r["medicamento"]
 
     nombre_original = map_nombre_original.get(med, med)
@@ -490,13 +518,33 @@ for i, r in enumerate(avance.sort_values("porcentaje", ascending=False).to_dict(
     elif porcentaje >= 40:
         estado = "Nivel medio"
 
+    porcentaje_barra = max(0, min(porcentaje, 100))
+
+    svg = obtener_svg_medicamento(nombre_original)
+
     with cols[i % 3]:
         st.markdown(f"""
-        <div class="card">
-            <div class="med-title">{nombre_original}</div>
-            <span class="badge">{estado}</span>
-            <span class="badge">{porcentaje:.2f}%</span>
-            {generar_visual_medicamento(porcentaje, nombre_original, cantidad, meta)}
+        <div class="med-card">
+
+            <div class="med-img">
+                {svg}
+            </div>
+
+            <div class="med-name">{nombre_original}</div>
+
+            <div class="progress-percent">{porcentaje:.1f}%</div>
+
+            <div class="progress-bar">
+                <div class="progress-fill" style="width:{porcentaje_barra}%;"></div>
+            </div>
+
+            <div class="med-meta">
+                Donado: <b>{formatear_numero(cantidad)}</b> &nbsp; | &nbsp;
+                Meta: <b>{formatear_numero(meta)}</b>
+            </div>
+
+            <div class="status-pill">{estado}</div>
+
         </div>
         """, unsafe_allow_html=True)
 
@@ -510,7 +558,9 @@ left, right = st.columns([1.1, 1])
 with left:
     st.markdown("## Ranking de avance")
 
-    for pos, r in enumerate(ranking.head(6).to_dict("records"), start=1):
+    ranking_completo = avance_completo.sort_values("porcentaje", ascending=False)
+
+    for pos, r in enumerate(ranking_completo.head(6).to_dict("records"), start=1):
         med = r["medicamento"]
         nombre_original = map_nombre_original.get(med, med)
 
@@ -604,7 +654,7 @@ except:
 st.markdown("## Comparativo general (donado vs meta)")
 
 fig = px.bar(
-    avance.sort_values("cantidad", ascending=True),
+    avance_completo.sort_values("cantidad", ascending=True),
     x="cantidad",
     y="medicamento",
     orientation="h",
@@ -614,6 +664,9 @@ fig = px.bar(
 
 fig.update_layout(template="plotly_dark", height=500)
 st.plotly_chart(fig, use_container_width=True)
+
+st.caption("Este dashboard se actualiza automáticamente cada 2 segundos.")
+
 
 st.caption("Este dashboard se actualiza automáticamente cada 2 segundos.")
 

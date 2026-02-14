@@ -24,7 +24,7 @@ CSV_DONACIONES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT2zRpYc-c3Zzn
 CSV_METAS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT2zRpYc-c3ZznxlPo51_k-5W3mNMzsxl8zlUzxCtugfc2ONIK_C-ht1DzKCR6vy2f1YSnwBx8umQxs/pub?gid=199575778&single=true&output=csv"
 
 # ==============================
-# ESTILO PREMIUM
+# ESTILO CORPORATIVO PREMIUM (SIN EMOJIS)
 # ==============================
 st.markdown("""
 <style>
@@ -35,7 +35,28 @@ body {
 }
 
 .block-container {
-    padding-top: 1.5rem;
+    padding-top: 1.0rem;
+}
+
+.header-bar {
+    background: linear-gradient(90deg, #101624, #0b0f17);
+    padding: 18px 25px;
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,0.08);
+    margin-bottom: 20px;
+    box-shadow: 0px 0px 20px rgba(0,0,0,0.55);
+}
+
+.header-title {
+    font-size: 34px;
+    font-weight: 800;
+    margin: 0px;
+}
+
+.header-subtitle {
+    font-size: 15px;
+    opacity: 0.75;
+    margin-top: 4px;
 }
 
 .card {
@@ -49,42 +70,45 @@ body {
 }
 
 .card:hover {
-    transform: scale(1.02);
+    transform: scale(1.01);
 }
 
 .metric-title {
-    font-size: 14px;
+    font-size: 13px;
     opacity: 0.75;
     margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .metric-value {
-    font-size: 26px;
-    font-weight: 800;
+    font-size: 28px;
+    font-weight: 900;
 }
 
 .metric-sub {
     font-size: 13px;
-    opacity: 0.75;
+    opacity: 0.70;
 }
 
 .badge {
     display: inline-block;
-    padding: 5px 12px;
-    border-radius: 12px;
+    padding: 6px 12px;
+    border-radius: 14px;
     font-size: 12px;
     font-weight: 700;
     background-color: rgba(255,255,255,0.10);
     margin-right: 8px;
+    margin-top: 8px;
 }
 
 .alertbox {
-    padding: 15px;
+    padding: 14px;
     border-radius: 14px;
     background: rgba(0, 200, 255, 0.12);
     border: 1px solid rgba(0, 200, 255, 0.35);
     font-weight: 700;
-    font-size: 16px;
+    font-size: 15px;
     margin-bottom: 15px;
 }
 
@@ -93,11 +117,92 @@ body {
     border-radius: 14px;
     background: rgba(0, 255, 130, 0.12);
     border: 1px solid rgba(0, 255, 130, 0.35);
-    font-weight: 800;
+    font-weight: 900;
     font-size: 18px;
     margin-bottom: 15px;
     text-align: center;
 }
+
+.ticker {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    padding: 12px;
+    border-radius: 14px;
+    overflow: hidden;
+    height: 200px;
+    position: relative;
+}
+
+.ticker-content {
+    position: absolute;
+    width: 100%;
+    animation: scrollTicker 15s linear infinite;
+}
+
+@keyframes scrollTicker {
+    0% { top: 100%; }
+    100% { top: -120%; }
+}
+
+.ticker-item {
+    padding: 10px 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    font-size: 14px;
+    opacity: 0.85;
+}
+
+.med-title {
+    font-size: 16px;
+    font-weight: 900;
+    margin-bottom: 10px;
+}
+
+/* ==============================
+   TARJETA MEDICAMENTO CON IMAGEN RELLENABLE
+============================== */
+.med-visual-container {
+    position: relative;
+    width: 100%;
+    height: 180px;
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.10);
+    background: rgba(255,255,255,0.03);
+    margin-top: 12px;
+}
+
+.med-fill-layer {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    background: linear-gradient(180deg, rgba(0, 220, 255, 0.95), rgba(0, 110, 255, 0.65));
+    transition: height 1.0s ease-in-out;
+    filter: blur(0.2px);
+}
+
+.med-svg-layer {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0.95;
+}
+
+.med-info-layer {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
+    padding: 8px 10px;
+    border-radius: 14px;
+    background: rgba(0,0,0,0.55);
+    border: 1px solid rgba(255,255,255,0.10);
+    font-size: 12px;
+    font-weight: 800;
+    text-align: center;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -119,7 +224,6 @@ def formatear_numero(x):
 
 
 def reproducir_sonido_ding():
-    # Sonido corto en base64 (beep simple)
     ding_base64 = """
     UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=
     """
@@ -131,13 +235,69 @@ def reproducir_sonido_ding():
     st.markdown(audio_html, unsafe_allow_html=True)
 
 
+def obtener_svg_medicamento(nombre):
+    nombre = nombre.lower()
+
+    if "gota" in nombre or "gotas" in nombre:
+        return """
+        <svg width="120" height="120" viewBox="0 0 200 200">
+            <rect x="70" y="30" width="60" height="120" rx="20" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.35)" stroke-width="4"/>
+            <rect x="80" y="10" width="40" height="30" rx="8" fill="rgba(255,255,255,0.20)" stroke="rgba(255,255,255,0.35)" stroke-width="4"/>
+            <circle cx="100" cy="170" r="22" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.35)" stroke-width="4"/>
+        </svg>
+        """
+
+    if "capsula" in nombre or "cápsula" in nombre:
+        return """
+        <svg width="140" height="120" viewBox="0 0 220 180">
+            <rect x="50" y="60" width="120" height="60" rx="30" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.35)" stroke-width="4"/>
+            <line x1="110" y1="60" x2="110" y2="120" stroke="rgba(255,255,255,0.35)" stroke-width="4"/>
+        </svg>
+        """
+
+    if "jarabe" in nombre or "suspensión" in nombre or "suspension" in nombre:
+        return """
+        <svg width="130" height="130" viewBox="0 0 200 200">
+            <rect x="70" y="40" width="60" height="120" rx="15" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.35)" stroke-width="4"/>
+            <rect x="75" y="20" width="50" height="30" rx="8" fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.35)" stroke-width="4"/>
+            <rect x="75" y="95" width="50" height="25" rx="10" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.25)" stroke-width="3"/>
+        </svg>
+        """
+
+    return """
+    <svg width="130" height="130" viewBox="0 0 200 200">
+        <rect x="65" y="50" width="70" height="110" rx="18" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.35)" stroke-width="4"/>
+        <rect x="75" y="25" width="50" height="35" rx="10" fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.35)" stroke-width="4"/>
+    </svg>
+    """
+
+
+def generar_visual_medicamento(porcentaje, medicamento, cantidad, meta):
+    porcentaje = max(0, min(porcentaje, 100))
+    svg = obtener_svg_medicamento(medicamento)
+
+    return f"""
+    <div class="med-visual-container">
+        <div class="med-fill-layer" style="height:{porcentaje}%;"></div>
+
+        <div class="med-svg-layer">
+            {svg}
+        </div>
+
+        <div class="med-info-layer">
+            {formatear_numero(cantidad)} / {formatear_numero(meta)} ({porcentaje:.1f}%)
+        </div>
+    </div>
+    """
+
+
 # ==============================
 # CARGAR DATOS
 # ==============================
 try:
     donaciones, metas = cargar_datos()
 except:
-    st.error("⚠️ No se pudieron cargar los datos. Revisa los links CSV.")
+    st.error("No se pudieron cargar los datos. Revisa los links CSV.")
     st.stop()
 
 donaciones.columns = [c.strip().lower() for c in donaciones.columns]
@@ -150,51 +310,41 @@ if "timestamp" in donaciones.columns and "fecha_hora" not in donaciones.columns:
 # ==============================
 # AJUSTE IMPORTANTE: NOMBRE PÚBLICO PARA DASHBOARD
 # ==============================
-# Este campo viene del Google Form:
-# "Nombre o entidad para mostrar en el dashboard (opcional)"
-
 if "nombre o entidad para mostrar en el dashboard (opcional)" in donaciones.columns:
     donaciones.rename(
         columns={"nombre o entidad para mostrar en el dashboard (opcional)": "donante_publico"},
         inplace=True
     )
 
-# Si el CSV público trae otra variante sin "(opcional)"
 if "nombre o entidad para mostrar en el dashboard" in donaciones.columns:
     donaciones.rename(
         columns={"nombre o entidad para mostrar en el dashboard": "donante_publico"},
         inplace=True
     )
 
-# Si no existe, crearla para evitar errores
 if "donante_publico" not in donaciones.columns:
     donaciones["donante_publico"] = "Anónimo"
 
-# Reemplazar vacíos por "Anónimo"
 donaciones["donante_publico"] = donaciones["donante_publico"].fillna("").astype(str).str.strip()
 donaciones.loc[donaciones["donante_publico"] == "", "donante_publico"] = "Anónimo"
 
 # ==============================
-# CAMBIO PRINCIPAL: SOPORTAR MULTI-MEDICAMENTOS POR FILA
+# VALIDACIÓN METAS
 # ==============================
-# metas debe tener: medicamento | meta
-# donaciones ahora tiene columnas: fecha_hora | donante_publico | medicamento1 | medicamento2 | ...
-# cada medicamento es una columna numérica
-
 if "medicamento" not in metas.columns or "meta" not in metas.columns:
-    st.error("⚠️ El archivo METAS debe tener columnas: medicamento, meta")
+    st.error("El archivo METAS debe tener columnas: medicamento, meta")
     st.stop()
 
 lista_medicamentos = metas["medicamento"].dropna().tolist()
 
 # Validar que existan esas columnas en donaciones
 for med in lista_medicamentos:
-    if med not in donaciones.columns:
-        donaciones[med] = 0
+    if med.lower() not in donaciones.columns:
+        donaciones[med.lower()] = 0
 
-# Convertir a numérico todas las columnas de medicamentos
+# Convertir a numérico
 for med in lista_medicamentos:
-    donaciones[med] = pd.to_numeric(donaciones[med], errors="coerce").fillna(0)
+    donaciones[med.lower()] = pd.to_numeric(donaciones[med.lower()], errors="coerce").fillna(0)
 
 # ==============================
 # CONTROL NUEVA DONACIÓN (BANNER + SONIDO)
@@ -204,30 +354,33 @@ if "ultima_fila" not in st.session_state:
 
 if len(donaciones) > st.session_state.ultima_fila:
     st.markdown("""
-    <div class="alertbox">🔔 Nueva donación registrada en tiempo real</div>
+    <div class="alertbox">Nueva donación registrada en tiempo real</div>
     """, unsafe_allow_html=True)
     reproducir_sonido_ding()
 
 st.session_state.ultima_fila = len(donaciones)
 
 # ==============================
-# REESTRUCTURAR DONACIONES A FORMATO LARGO (medicamento, cantidad)
+# FORMATO LARGO DONACIONES
 # ==============================
 donaciones_largo = donaciones.melt(
-    id_vars=[c for c in donaciones.columns if c not in lista_medicamentos],
-    value_vars=lista_medicamentos,
+    id_vars=[c for c in donaciones.columns if c not in [m.lower() for m in lista_medicamentos]],
+    value_vars=[m.lower() for m in lista_medicamentos],
     var_name="medicamento",
     value_name="cantidad"
 )
 
-# Quitar ceros (medicamentos que no donó)
 donaciones_largo = donaciones_largo[donaciones_largo["cantidad"] > 0]
 
 # ==============================
-# CÁLCULOS PRINCIPALES
+# CALCULOS PRINCIPALES
 # ==============================
 avance = donaciones_largo.groupby("medicamento", as_index=False)["cantidad"].sum()
-avance = avance.merge(metas, on="medicamento", how="left")
+
+metas_temp = metas.copy()
+metas_temp["medicamento"] = metas_temp["medicamento"].astype(str).str.strip().str.lower()
+
+avance = avance.merge(metas_temp, on="medicamento", how="left")
 avance["meta"] = avance["meta"].fillna(0)
 
 avance["porcentaje"] = avance.apply(
@@ -236,16 +389,26 @@ avance["porcentaje"] = avance.apply(
 )
 
 total_recaudado = avance["cantidad"].sum()
-total_meta = metas["meta"].sum()
+total_meta = metas_temp["meta"].sum()
 porcentaje_total = (total_recaudado / total_meta * 100) if total_meta > 0 else 0
 
 ranking = avance.sort_values("porcentaje", ascending=False)
 
-# Últimas donaciones
 ultimas = donaciones_largo.sort_values("fecha_hora", ascending=False).head(10)
 
-# Donación más grande
 donacion_mas_grande = donaciones_largo.loc[donaciones_largo["cantidad"].idxmax()] if len(donaciones_largo) > 0 else None
+
+# ==============================
+# HEADER CORPORATIVO
+# ==============================
+st.markdown(f"""
+<div class="header-bar">
+    <div class="header-title">Subasta Solidaria - Medicamentos para Cuba</div>
+    <div class="header-subtitle">
+        Dashboard en vivo | Metas dinámicas | Registro inmediato de donaciones
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 # ==============================
 # CELEBRACIÓN 100%
@@ -255,31 +418,19 @@ completados = avance[avance["porcentaje"] >= 100]
 if len(completados) > 0:
     meds = ", ".join(completados["medicamento"].tolist())
     st.markdown(f"""
-    <div class="celebration">🎉 META ALCANZADA: {meds} 🎉</div>
+    <div class="celebration">Meta alcanzada: {meds}</div>
     """, unsafe_allow_html=True)
     st.balloons()
 
 # ==============================
-# HEADER
-# ==============================
-st.markdown("""
-<h1 style="text-align:center; font-size:48px;">💊 Subasta Solidaria - Medicamentos para Cuba</h1>
-<p style="text-align:center; font-size:18px; opacity:0.8;">
-Dashboard en vivo | Metas dinámicas | Registro inmediato de donaciones
-</p>
-""", unsafe_allow_html=True)
-
-st.divider()
-
-# ==============================
-# PANEL PRINCIPAL SUPERIOR
+# PANEL SUPERIOR
 # ==============================
 c1, c2, c3, c4 = st.columns([2, 1, 1, 1])
 
 with c1:
     st.markdown(f"""
     <div class="card">
-        <div class="metric-title">🌍 Progreso Global</div>
+        <div class="metric-title">Progreso global</div>
         <div class="metric-value">{formatear_numero(total_recaudado)} / {formatear_numero(total_meta)}</div>
         <div class="metric-sub">Cumplimiento total: <b>{porcentaje_total:.2f}%</b></div>
     </div>
@@ -288,7 +439,7 @@ with c1:
 with c2:
     st.markdown(f"""
     <div class="card">
-        <div class="metric-title">📦 Total Donado</div>
+        <div class="metric-title">Total donado</div>
         <div class="metric-value">{formatear_numero(total_recaudado)}</div>
         <div class="metric-sub">Unidades registradas</div>
     </div>
@@ -297,18 +448,18 @@ with c2:
 with c3:
     st.markdown(f"""
     <div class="card">
-        <div class="metric-title">🎯 Meta Total</div>
+        <div class="metric-title">Meta total</div>
         <div class="metric-value">{formatear_numero(total_meta)}</div>
-        <div class="metric-sub">Editable en Sheets</div>
+        <div class="metric-sub">Editable en Google Sheets</div>
     </div>
     """, unsafe_allow_html=True)
 
 with c4:
     st.markdown(f"""
     <div class="card">
-        <div class="metric-title">🧾 Registros</div>
+        <div class="metric-title">Registros</div>
         <div class="metric-value">{len(donaciones)}</div>
-        <div class="metric-sub">Donaciones ingresadas</div>
+        <div class="metric-sub">Donaciones registradas</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -316,60 +467,63 @@ st.progress(min(porcentaje_total / 100, 1.0))
 st.divider()
 
 # ==============================
-# TARJETAS POR MEDICAMENTO
+# AVANCE POR MEDICAMENTO CON IMAGEN ANIMADA RELLENABLE
 # ==============================
-st.markdown("## 💊 Avance por medicamento (en vivo)")
+st.markdown("## Avance por medicamento")
 
 cols = st.columns(3)
+
+# Para mostrar nombres originales como están en metas
+map_nombre_original = dict(zip(metas_temp["medicamento"], metas["medicamento"]))
 
 for i, r in enumerate(avance.sort_values("porcentaje", ascending=False).to_dict("records")):
     porcentaje = r["porcentaje"]
     cantidad = r["cantidad"]
     meta = r["meta"]
+    med = r["medicamento"]
 
-    estado = "🔴 Bajo"
+    nombre_original = map_nombre_original.get(med, med)
+
+    estado = "Nivel bajo"
     if porcentaje >= 70:
-        estado = "🟢 Excelente"
+        estado = "Nivel excelente"
     elif porcentaje >= 40:
-        estado = "🟠 Medio"
+        estado = "Nivel medio"
 
     with cols[i % 3]:
         st.markdown(f"""
         <div class="card">
-            <h3>{r['medicamento']}</h3>
+            <div class="med-title">{nombre_original}</div>
             <span class="badge">{estado}</span>
             <span class="badge">{porcentaje:.2f}%</span>
-            <p style="margin-top:10px; font-size:20px; font-weight:800;">
-                {formatear_numero(cantidad)} / {formatear_numero(meta)}
-            </p>
-            <p style="opacity:0.7; font-size:13px;">
-                Donado: {formatear_numero(cantidad)} unidades
-            </p>
+            {generar_visual_medicamento(porcentaje, nombre_original, cantidad, meta)}
         </div>
         """, unsafe_allow_html=True)
-
-        st.progress(min(porcentaje / 100, 1.0))
 
 st.divider()
 
 # ==============================
-# RANKING + DONACIÓN MÁS GRANDE
+# RANKING + MAYOR DONACIÓN
 # ==============================
 left, right = st.columns([1.1, 1])
 
 with left:
-    st.markdown("## 🏆 Ranking de avance")
+    st.markdown("## Ranking de avance")
+
     for pos, r in enumerate(ranking.head(6).to_dict("records"), start=1):
+        med = r["medicamento"]
+        nombre_original = map_nombre_original.get(med, med)
+
         st.markdown(f"""
         <div class="card">
-            <b>#{pos}</b> {r['medicamento']} <br>
+            <b>{pos}</b> {nombre_original}<br>
             <span class="badge">Cumplimiento: {r['porcentaje']:.2f}%</span>
             <span class="badge">Donado: {formatear_numero(r['cantidad'])}</span>
         </div>
         """, unsafe_allow_html=True)
 
 with right:
-    st.markdown("## 💎 Donación más grande registrada")
+    st.markdown("## Mayor donación registrada")
 
     if donacion_mas_grande is not None:
         st.markdown(f"""
@@ -378,7 +532,7 @@ with right:
             <div class="metric-value">{formatear_numero(donacion_mas_grande['cantidad'])} unidades</div>
             <div class="metric-sub">
                 Donante: <b>{donacion_mas_grande['donante_publico']}</b><br>
-                Medicamento: <b>{donacion_mas_grande['medicamento']}</b>
+                Medicamento: <b>{map_nombre_original.get(donacion_mas_grande['medicamento'], donacion_mas_grande['medicamento'])}</b>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -388,24 +542,40 @@ with right:
 st.divider()
 
 # ==============================
-# ÚLTIMAS DONACIONES EN VIVO
+# ÚLTIMAS DONACIONES (TICKER)
 # ==============================
-st.markdown("## ⚡ Últimas donaciones registradas (en vivo)")
+st.markdown("## Últimas donaciones registradas")
 
-cols_tabla = ["fecha_hora", "donante_publico", "medicamento", "cantidad"]
+if len(ultimas) > 0:
+    ticker_html = "<div class='ticker'><div class='ticker-content'>"
 
-st.dataframe(
-    ultimas[cols_tabla],
-    use_container_width=True,
-    hide_index=True
-)
+    for _, row in ultimas.iterrows():
+        fecha = str(row.get("fecha_hora", ""))
+        donante = str(row.get("donante_publico", "Anónimo"))
+        med = str(row.get("medicamento", ""))
+        med = map_nombre_original.get(med, med)
+        cantidad = formatear_numero(row.get("cantidad", 0))
+
+        ticker_html += f"""
+        <div class='ticker-item'>
+            <b>{donante}</b> donó <b>{cantidad}</b> unidades de <b>{med}</b><br>
+            <span style="opacity:0.6; font-size:12px;">{fecha}</span>
+        </div>
+        """
+
+    ticker_html += "</div></div>"
+
+    st.markdown(ticker_html, unsafe_allow_html=True)
+
+else:
+    st.info("No hay donaciones registradas todavía.")
 
 st.divider()
 
 # ==============================
-# GRÁFICO DONACIONES POR MINUTO (VELOCIDAD)
+# GRÁFICO DONACIONES POR MINUTO
 # ==============================
-st.markdown("## 🚀 Velocidad del evento (donaciones por minuto)")
+st.markdown("## Velocidad del evento (donaciones por minuto)")
 
 try:
     donaciones_largo["fecha_hora"] = pd.to_datetime(donaciones_largo["fecha_hora"])
@@ -431,7 +601,7 @@ except:
 # ==============================
 # GRÁFICO DONADO VS META
 # ==============================
-st.markdown("## 📊 Comparativo general (donado vs meta)")
+st.markdown("## Comparativo general (donado vs meta)")
 
 fig = px.bar(
     avance.sort_values("cantidad", ascending=True),
@@ -445,4 +615,5 @@ fig = px.bar(
 fig.update_layout(template="plotly_dark", height=500)
 st.plotly_chart(fig, use_container_width=True)
 
-st.caption("📌 Este dashboard se actualiza automáticamente cada 2 segundos.")
+st.caption("Este dashboard se actualiza automáticamente cada 2 segundos.")
+

@@ -20,7 +20,7 @@ st.set_page_config(
 # ==============================
 # AUTO-REFRESH
 # ==============================
-count = st_autorefresh(interval=20000, key="datarefresh")
+count = st_autorefresh(interval=8000, key="datarefresh")
 
 # ==============================
 # CARGA DE DATOS DESDE API (APPS SCRIPT)
@@ -143,27 +143,17 @@ lista_medicamentos = metas["medicamento"].tolist()
 # ==============================
 # NORMALIZACIÓN DONACIONES
 # ==============================
-# Renombrar columna Timestamp
 if "Timestamp" in donaciones.columns:
     donaciones.rename(columns={"Timestamp": "fecha_hora"}, inplace=True)
 elif "timestamp" in donaciones.columns:
     donaciones.rename(columns={"timestamp": "fecha_hora"}, inplace=True)
 
-# Limpiar columna del donante y crear 'donante_publico'
-col_donante = "Nombre o entidad donante para mostrar en el dashboard (opcional)"
-if col_donante in donaciones.columns:
-    donaciones["donante_publico"] = donaciones[col_donante].fillna("").astype(str).str.strip()
-else:
-    donaciones["donante_publico"] = ""
-
-# Reemplazar valores vacíos o 'nan' por 'Donante anónimo'
+donaciones["donante_publico"] = donaciones.get("Contacto (opcional)", "").fillna("").astype(str).str.strip()
 donaciones.loc[donaciones["donante_publico"] == "", "donante_publico"] = "Donante anónimo"
 donaciones.loc[donaciones["donante_publico"].str.lower() == "nan", "donante_publico"] = "Donante anónimo"
 
-# Eliminar columna 'Donante' si existe
 if "Donante" in donaciones.columns:
     donaciones = donaciones.drop(columns=["Donante"])
-
 
 # ==============================
 # CREAR COLUMNAS MEDICAMENTOS

@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import streamlit.components.v1 as components
-# from streamlit_autorefresh import st_autorefresh  # ❌ ELIMINADO - causa oscurecimiento
+from streamlit_autorefresh import st_autorefresh
 import time
 import hashlib
 import requests
@@ -17,11 +17,31 @@ st.set_page_config(
     layout="wide"
 )
 
+# ✅ CSS PARA EVITAR FLASH DURANTE AUTO-REFRESH
+st.markdown("""
+<style>
+    /* Ocultar elementos de Streamlit que causan flash */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
+    /* Forzar fondo oscuro durante toda la carga */
+    .stApp {
+        background-color: #060A12 !important;
+        transition: none !important;
+    }
+    
+    /* Evitar flash blanco en iframe */
+    iframe {
+        background-color: #060A12 !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # ==============================
 # AUTO-REFRESH
 # ==============================
-# count = st_autorefresh(interval=8000, key="datarefresh")  # ❌ ELIMINADO - causa oscurecimiento
-# ✅ AHORA el auto-refresh se hace en JavaScript dentro del HTML
+count = st_autorefresh(interval=8000, key="datarefresh")
 
 # ==============================
 # CARGA DE DATOS DESDE API (APPS SCRIPT)
@@ -360,6 +380,30 @@ html = f"""
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+/* ==================== ANTI-FLASH / ANTI-OSCURECIMIENTO ==================== */
+html {{
+    background: #060A12 !important;
+    background-color: #060A12 !important;
+}}
+
+html, body {{
+    background: #060A12;
+    transition: none !important;
+    animation: none !important;
+}}
+
+/* Evitar flash blanco durante recarga */
+html::before {{
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #060A12;
+    z-index: -1;
+}}
 
 * {{
     margin: 0;
@@ -1134,12 +1178,6 @@ body::after {{
             }});
         }}, 500);
     }}
-
-    // ✅ AUTO-REFRESH EN JAVASCRIPT - Sin oscurecimiento
-    // Recarga la página cada 8 segundos de forma suave
-    setTimeout(function() {{
-        window.location.reload();
-    }}, 8000);
 </script>
 
 </body>

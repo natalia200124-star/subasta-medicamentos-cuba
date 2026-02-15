@@ -1139,6 +1139,5 @@ body::after {{
 </html>
 """
 
-components.html(html, height=1050, scrolling=False)
 components.html(html, height=1400, scrolling=True)
 

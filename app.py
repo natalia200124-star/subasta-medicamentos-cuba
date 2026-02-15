@@ -272,12 +272,12 @@ COLORES_MEDICAMENTOS = [
 # ✅ IMÁGENES ANIMADAS DE MEDICAMENTOS - SOLO MEDICAMENTOS
 # ==============================
 IMG_MAP = {
-    "multivitaminas (gotas)": "https://cdn-icons-png.flaticon.com/512/4320/4320371.png",  # Frasco de medicina con etiqueta
-    "vitaminas c (gotas)": "https://cdn-icons-png.flaticon.com/512/2913/2913133.png",  # Tabletas/pastillas
-    "vitamina a y d2 (gotas)": "https://cdn-icons-png.flaticon.com/512/3094/3094840.png",  # Jarabe líquido
-    "vitamina d2 forte (gotas)": "https://cdn-icons-png.flaticon.com/512/2785/2785629.png",  # Botella de suspensión
-    "vitamina b (gotas)": "https://cdn-icons-png.flaticon.com/512/2966/2966327.png",  # Cápsula de medicina
-    "fumarato ferroso en suspensión": "https://cdn-icons-png.flaticon.com/512/3774/3774239.png",  # Frasco con gotero
+    "multivitaminas (gotas)": "https://img.icons8.com/?size=100&id=BayY6C34iXTA&format=png&color=000000",  # Frasco de medicina con etiqueta
+    "vitaminas c (gotas)": "https://img.icons8.com/?size=100&id=p514QFRInGPV&format=png&color=000000",  # Tabletas/pastillas
+    "vitamina a y d2 (gotas)": "https://img.icons8.com/?size=100&id=56345&format=png&color=000000g",  # Jarabe líquido
+    "vitamina d2 forte (gotas)": "https://img.icons8.com/?size=100&id=aRMbtEpJbrOj&format=png&color=000000",  # Botella de suspensión
+    "vitamina b (gotas)": "https://img.icons8.com/?size=100&id=2t4G6lB9hX4X&format=png&color=000000",  # Cápsula de medicina
+    "fumarato ferroso en suspensión": "https://img.icons8.com/?size=100&id=10XEPhqyfdJh&format=png&color=000000",  # Frasco con gotero
 }
 
 DEFAULT_IMG = "https://cdn-icons-png.flaticon.com/512/2966/2966334.png"  # Frasco genérico

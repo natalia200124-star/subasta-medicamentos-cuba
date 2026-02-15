@@ -20,8 +20,8 @@ st_autorefresh(interval=20000, key="data_refresh")
 # ==========================================================
 # LINKS CSV PUBLICADOS DESDE GOOGLE SHEETS
 # ==========================================================
-DONACIONES_URL = "PON_AQUI_EL_LINK_DE_DONACIONES_PUBLICO.csv"
-METAS_URL = "PON_AQUI_EL_LINK_DE_METAS.csv"
+DONACIONES_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSQ-JoPi55tEnwRnP_SyYy5gawWPJoQaQ0jI4PLgDpA4CcEdKjSb2IFftcc475zBr5Ou34BTrSdZ8v9/pub?gid=1709067163&single=true&output=csv"
+METAS_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSQ-JoPi55tEnwRnP_SyYy5gawWPJoQaQ0jI4PLgDpA4CcEdKjSb2IFftcc475zBr5Ou34BTrSdZ8v9/pub?gid=1531001200&single=true&output=csv"
 
 # ==========================================================
 # CARGA DE DATOS

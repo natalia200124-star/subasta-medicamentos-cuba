@@ -18,7 +18,7 @@ st.set_page_config(
 )
 
 # ==============================
-# AUTO-REFRESH (RECOMENDADO 15 SEGUNDOS)
+# AUTO-REFRESH (15 SEGUNDOS)
 # ==============================
 count = st_autorefresh(interval=15000, key="datarefresh")
 
@@ -68,7 +68,7 @@ def cargar_estado_json():
 # ==============================
 def get_csv_url_with_timestamp(base_url):
     """Agrega un timestamp único a la URL para evitar caché del navegador"""
-    timestamp = int(time.time() * 1000)  # Timestamp en milisegundos
+    timestamp = int(time.time() * 1000)
     separator = "&" if "?" in base_url else "?"
     return f"{base_url}{separator}t={timestamp}"
 
@@ -91,7 +91,7 @@ if 'mostrar_confeti' not in st.session_state:
 
 
 # ==============================
-# CARGAR ESTADO DESDE JSON (SOLO SI NO EXISTE AÚN EN SESSION)
+# CARGAR ESTADO DESDE JSON
 # ==============================
 if st.session_state.ultima_donacion_id is None and st.session_state.ultima_fecha_detectada is None:
     fecha_guardada, id_guardado = cargar_estado_json()
@@ -114,9 +114,7 @@ def generar_id_donacion(fila):
 def cargar_datos():
     """
     Carga datos SIN CACHÉ - Siempre datos frescos
-    CRÍTICO: NO usar @st.cache_data aquí
     """
-    # Forzar descarga fresca con timestamp único
     url_donaciones = get_csv_url_with_timestamp(CSV_BASE_DONACIONES)
     url_metas = get_csv_url_with_timestamp(CSV_BASE_METAS)
 
@@ -162,36 +160,25 @@ def termometro_ultra_moderno_svg(pct, color="#00d4ff"):
             </filter>
         </defs>
 
-        <!-- Glow externo -->
         <circle cx="65" cy="170" r="26" fill="{color}" opacity="0.15" filter="blur(8px)"/>
-
-        <!-- Bulbo base -->
         <circle cx="65" cy="170" r="22" fill="rgba(10,15,30,0.5)" stroke="{color}" stroke-width="2.5" opacity="0.5"/>
-
-        <!-- Tubo base -->
         <rect x="52" y="35" width="26" height="135" rx="13" fill="rgba(10,15,30,0.5)" stroke="{color}" stroke-width="2.5" opacity="0.5"/>
 
         <clipPath id="clipT{hash(color)}">
             <rect x="52" y="35" width="26" height="135" rx="13"/>
         </clipPath>
 
-        <!-- Relleno animado -->
         <rect x="52" y="{y}" width="26" height="{altura}" fill="url(#tube{hash(color)})"
               clip-path="url(#clipT{hash(color)})" filter="url(#neon{hash(color)})"/>
 
-        <!-- Bulbo lleno -->
         <circle cx="65" cy="170" r="18" fill="url(#bulb{hash(color)})" filter="url(#neon{hash(color)})"/>
-
-        <!-- Brillo interno -->
         <circle cx="65" cy="170" r="10" fill="white" opacity="0.3"/>
 
-        <!-- Marcas -->
         <line x1="79" y1="50" x2="88" y2="50" stroke="{color}" stroke-width="2" opacity="0.6"/>
         <line x1="79" y1="80" x2="88" y2="80" stroke="{color}" stroke-width="2" opacity="0.6"/>
         <line x1="79" y1="110" x2="88" y2="110" stroke="{color}" stroke-width="2" opacity="0.6"/>
         <line x1="79" y1="140" x2="88" y2="140" stroke="{color}" stroke-width="2" opacity="0.6"/>
 
-        <!-- Texto de porcentaje -->
         <text x="65" y="200" text-anchor="middle" fill="{color}" font-size="14" font-weight="900" opacity="0.9">{pct:.0f}%</text>
     </svg>
     """
@@ -242,17 +229,14 @@ if "Timestamp" in donaciones.columns:
 elif "timestamp" in donaciones.columns:
     donaciones.rename(columns={"timestamp": "fecha_hora"}, inplace=True)
 
-# ✅ CRÍTICO: Solo usar "Contacto (opcional)", NUNCA "Donante"
 if "Contacto (opcional)" in donaciones.columns:
     donaciones["donante_publico"] = donaciones["Contacto (opcional)"].fillna("").astype(str).str.strip()
 else:
     donaciones["donante_publico"] = ""
 
-# Convertir vacíos a "Donante anónimo"
 donaciones.loc[donaciones["donante_publico"] == "", "donante_publico"] = "Donante anónimo"
 donaciones.loc[donaciones["donante_publico"].str.lower() == "nan", "donante_publico"] = "Donante anónimo"
 
-# Eliminar la columna "Donante" para evitar confusiones
 if "Donante" in donaciones.columns:
     donaciones = donaciones.drop(columns=["Donante"])
 
@@ -269,7 +253,7 @@ for med in lista_medicamentos:
 
 
 # ==============================
-# PROCESAMIENTO DE FECHAS Y DETECCIÓN DE NUEVA DONACIÓN (FIX DEFINITIVO)
+# PROCESAMIENTO FECHAS Y DETECCIÓN NUEVA DONACIÓN
 # ==============================
 ultimo_donante = "Donante anónimo"
 ultima_hora = ""
@@ -278,7 +262,6 @@ hay_nueva_donacion = False
 
 if "fecha_hora" in donaciones.columns:
     try:
-        # ✅ Conversión robusta (soporta 9:34:31 sin problema)
         donaciones["fecha_hora"] = pd.to_datetime(
             donaciones["fecha_hora"].astype(str).str.strip(),
             dayfirst=True,
@@ -289,15 +272,12 @@ if "fecha_hora" in donaciones.columns:
 
         if len(donaciones_validas) > 0:
 
-            # Ordenar por fecha descendente
             donaciones_validas = donaciones_validas.sort_values("fecha_hora", ascending=False)
             fila_ultima = donaciones_validas.iloc[0]
 
-            # ID único
             id_actual = generar_id_donacion(fila_ultima)
             fecha_actual = fila_ultima["fecha_hora"]
 
-            # Primera carga
             if st.session_state.ultima_fecha_detectada is None:
                 st.session_state.ultima_fecha_detectada = fecha_actual
                 st.session_state.ultima_donacion_id = id_actual
@@ -305,18 +285,15 @@ if "fecha_hora" in donaciones.columns:
                 guardar_estado_json(fecha_actual, id_actual)
 
             else:
-                # ✅ SOLO ACEPTAR SI ES MÁS NUEVA (evita retroceso por caché)
                 if fecha_actual > st.session_state.ultima_fecha_detectada:
                     st.session_state.ultima_fecha_detectada = fecha_actual
                     st.session_state.ultima_donacion_id = id_actual
                     st.session_state.mostrar_confeti = True
                     hay_nueva_donacion = True
                     guardar_estado_json(fecha_actual, id_actual)
-
                 else:
                     st.session_state.mostrar_confeti = False
 
-            # Datos del overlay
             ultimo_donante = fila_ultima["donante_publico"]
 
             suma_medicamentos = 0
@@ -349,19 +326,7 @@ donaciones_largo = donaciones_largo[donaciones_largo["cantidad"] > 0]
 # ==============================
 donado_por_med = donaciones_largo.groupby("medicamento", as_index=False)["cantidad"].sum()
 
-metas_temp = metas.copy()
-metas_temp["medicamento_lower"] = metas_temp["medicamento"].str.lower()
-
-# Crear diccionario para mapear nombres
-map_medicamentos = {}
-for med in lista_medicamentos:
-    map_medicamentos[med.lower()] = med
-
-# Normalizar nombres en donado_por_med
-donado_por_med["medicamento_lower"] = donado_por_med["medicamento"].str.lower()
-
-# Merge
-avance = metas_temp.merge(donado_por_med, on="medicamento_lower", how="left", suffixes=("", "_don"))
+avance = metas.merge(donado_por_med, on="medicamento", how="left")
 avance["cantidad"] = avance["cantidad"].fillna(0)
 
 avance["faltante"] = avance["meta"] - avance["cantidad"]
@@ -380,20 +345,20 @@ fecha_hoy = datetime.now().strftime("%d de %B de %Y")
 
 
 # ==============================
-# PALETA DE COLORES PREMIUM HEALTHTECH
+# PALETA DE COLORES PREMIUM
 # ==============================
 COLORES_MEDICAMENTOS = [
-    "#00D4FF",  # Cyan eléctrico
-    "#FF3D71",  # Rosa neón
-    "#00FF9F",  # Verde esmeralda
-    "#FFB800",  # Dorado brillante
-    "#B24BF3",  # Púrpura vibrante
-    "#FF6B35",  # Naranja cálido
+    "#00D4FF",
+    "#FF3D71",
+    "#00FF9F",
+    "#FFB800",
+    "#B24BF3",
+    "#FF6B35",
 ]
 
 
 # ==============================
-# ✅ IMÁGENES DE MEDICAMENTOS - URLs VERIFICADAS MANUALMENTE
+# MAP IMÁGENES
 # ==============================
 IMG_MAP = {
     "multivitaminas (gotas)": "https://img.icons8.com/?size=100&id=BayY6C34iXTA&format=png&color=000000",
@@ -428,7 +393,7 @@ else:
 
 
 # ==============================
-# TARJETAS CON DISEÑO ULTRA PREMIUM
+# TARJETAS
 # ==============================
 cards_html = ""
 
@@ -464,17 +429,14 @@ for _, r in avance.iterrows():
                 <div class="image-glow" style="background: {color_main}30;"></div>
 
                 <div class="img-wrapper">
-                    <!-- Imagen base gris -->
                     <img src="{img_url}" class="img-base"/>
 
-                    <!-- Contenedor de llenado -->
                     <div class="img-fill-container" style="height: {pct_bar}%;">
 
                         <img src="{img_url}" class="img-colored"
                              style="filter: drop-shadow(0 0 12px {color_main}) brightness(1.2);"/>
                     </div>
 
-                    <!-- Efecto de brillo -->
                     <div class="img-shimmer"></div>
                 </div>
             </div>
@@ -509,7 +471,7 @@ for _, r in avance.iterrows():
 
 
 # ==============================
-# HTML ULTRA PREMIUM - DISEÑO REVOLUCIONARIO
+# HTML COMPLETO (AQUÍ ESTABA EL ERROR)
 # ==============================
 html = f"""
 <!DOCTYPE html>
@@ -540,54 +502,6 @@ body {{
     position: relative;
 }}
 
-/* ==================== FONDO ANIMADO ==================== */
-body::before {{
-    content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background:
-        radial-gradient(circle at 15% 20%, rgba(0, 212, 255, 0.08) 0%, transparent 40%),
-        radial-gradient(circle at 85% 80%, rgba(255, 61, 113, 0.08) 0%, transparent 40%),
-        radial-gradient(circle at 50% 50%, rgba(0, 255, 159, 0.05) 0%, transparent 50%);
-    pointer-events: none;
-    z-index: 0;
-    animation: pulse 8s ease-in-out infinite;
-}}
-
-@keyframes pulse {{
-    0%, 100% {{ opacity: 1; }}
-    50% {{ opacity: 0.8; }}
-}}
-
-/* Partículas flotantes */
-body::after {{
-    content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-image:
-        radial-gradient(2px 2px at 20% 30%, rgba(255,255,255,0.15), transparent),
-        radial-gradient(2px 2px at 60% 70%, rgba(0,212,255,0.2), transparent),
-        radial-gradient(1px 1px at 50% 50%, rgba(255,61,113,0.2), transparent),
-        radial-gradient(1px 1px at 80% 10%, rgba(0,255,159,0.15), transparent);
-    background-size: 200px 200px, 300px 300px, 250px 250px, 350px 350px;
-    background-position: 0 0, 40px 60px, 130px 270px, 70px 100px;
-    animation: float 20s linear infinite;
-    pointer-events: none;
-    z-index: 0;
-}}
-
-@keyframes float {{
-    0% {{ transform: translateY(0px); }}
-    50% {{ transform: translateY(-20px); }}
-    100% {{ transform: translateY(0px); }}
-}}
-
 .main {{
     max-width: 1920px;
     margin: 0 auto;
@@ -596,11 +510,8 @@ body::after {{
     z-index: 1;
 }}
 
-/* ==================== HEADER PREMIUM ==================== */
 .header {{
     background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(8, 15, 30, 0.95) 100%);
-    backdrop-filter: blur(30px) saturate(180%);
-    -webkit-backdrop-filter: blur(30px) saturate(180%);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 28px;
     padding: 32px 40px;
@@ -608,28 +519,6 @@ body::after {{
     justify-content: space-between;
     align-items: center;
     margin-bottom: 30px;
-    box-shadow:
-        0 20px 60px rgba(0, 0, 0, 0.5),
-        0 0 80px rgba(0, 212, 255, 0.1),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    position: relative;
-    overflow: hidden;
-}}
-
-.header::before {{
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 200%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.03), transparent);
-    animation: shimmer 3s infinite;
-}}
-
-@keyframes shimmer {{
-    0% {{ transform: translateX(-100%); }}
-    100% {{ transform: translateX(100%); }}
 }}
 
 .logo {{
@@ -641,22 +530,12 @@ body::after {{
     font-size: 12px;
     line-height: 1.4;
     text-align: center;
-    letter-spacing: 0.8px;
-    box-shadow:
-        0 8px 32px rgba(0, 212, 255, 0.4),
-        inset 0 2px 0 rgba(255, 255, 255, 0.5);
-    text-transform: uppercase;
 }}
 
 .title {{
     font-size: 38px;
     font-weight: 900;
-    background: linear-gradient(135deg, #FFFFFF 0%, #00D4FF 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    letter-spacing: -1px;
-    text-shadow: 0 0 40px rgba(0, 212, 255, 0.3);
+    color: white;
 }}
 
 .subtitle {{
@@ -664,7 +543,6 @@ body::after {{
     color: rgba(255, 255, 255, 0.5);
     margin-top: 6px;
     font-weight: 600;
-    letter-spacing: 0.5px;
 }}
 
 .header-badge {{
@@ -675,14 +553,8 @@ body::after {{
     background: rgba(0, 255, 159, 0.12);
     border: 2px solid rgba(0, 255, 159, 0.3);
     border-radius: 16px;
-    box-shadow:
-        0 0 30px rgba(0, 255, 159, 0.3),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    text-transform: uppercase;
-    letter-spacing: 1px;
 }}
 
-/* ==================== SUMMARY ==================== */
 .summary {{
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
@@ -691,21 +563,10 @@ body::after {{
 }}
 
 .summary-card {{
-    background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(8, 15, 30, 0.9) 100%);
-    backdrop-filter: blur(20px);
+    background: rgba(15, 23, 42, 0.9);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 24px;
     padding: 28px;
-    box-shadow:
-        0 15px 50px rgba(0, 0, 0, 0.4),
-        inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    transition: all 0.3s ease;
-}}
-
-.summary-card:hover {{
-    transform: translateY(-5px);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-    border-color: rgba(0, 212, 255, 0.3);
 }}
 
 .summary-label {{
@@ -720,13 +581,9 @@ body::after {{
 .summary-number {{
     font-size: 42px;
     font-weight: 900;
-    background: linear-gradient(135deg, #FFFFFF 0%, #00D4FF 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: white;
 }}
 
-/* ==================== PROGRESO GLOBAL ==================== */
 .global-progress {{
     margin-top: 8px;
 }}
@@ -737,7 +594,6 @@ body::after {{
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
     overflow: hidden;
-    position: relative;
 }}
 
 .progress-active {{
@@ -745,23 +601,6 @@ body::after {{
     width: {porcentaje_total:.1f}%;
     background: linear-gradient(90deg, #00FF9F 0%, #00D4FF 100%);
     border-radius: 20px;
-    position: relative;
-    transition: width 2s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow:
-        0 0 30px rgba(0, 255, 159, 0.5),
-        inset 0 2px 0 rgba(255,  255, 255, 0.3);
-}}
-
-.progress-active::before {{
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 50%;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 100%);
-    pointer-events: none;
-    z-index: 2;
 }}
 
 .progress-percent {{
@@ -770,10 +609,8 @@ body::after {{
     font-weight: 900;
     margin-top: 10px;
     color: #00FF9F;
-    text-shadow: 0 0 20px rgba(0, 255, 159, 0.5);
 }}
 
-/* ==================== PANEL ==================== */
 .panel {{
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -782,20 +619,10 @@ body::after {{
 }}
 
 .panel-card {{
-    background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(8, 15, 30, 0.9) 100%);
-    backdrop-filter: blur(20px);
+    background: rgba(15, 23, 42, 0.9);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 24px;
     padding: 24px;
-    box-shadow:
-        0 15px 50px rgba(0, 0, 0, 0.4),
-        inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    transition: all 0.3s ease;
-}}
-
-.panel-card:hover {{
-    transform: translateY(-3px);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }}
 
 .panel-label {{
@@ -820,148 +647,28 @@ body::after {{
     font-weight: 600;
 }}
 
-/* ==================== GRID 3x2 MEDICAMENTOS ==================== */
 .grid {{
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 24px;
 }}
 
-/* ==================== TARJETAS MEDICAMENTOS ULTRA PREMIUM ==================== */
 .med-card {{
-    background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(8, 15, 30, 0.95) 100%);
-    backdrop-filter: blur(30px) saturate(180%);
+    background: rgba(15, 23, 42, 0.95);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 28px;
     padding: 28px;
     min-height: 580px;
     display: flex;
     flex-direction: column;
-    box-shadow:
-        0 20px 60px rgba(0, 0, 0,  0.5),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    overflow: hidden;
 }}
 
-.med-header {{
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 24px;
-    gap: 12px;
-}}
-
-.med-title {{
-    font-size: 18px;
-    font-weight: 900;
-    background: linear-gradient(135deg, #FFFFFF 0%, #C5D9FF 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    flex: 1;
-    line-height: 1.3;
-}}
-
-.med-badge {{
-    padding: 8px 16px;
-    border-radius: 12px;
-    font-size: 14px;
-    font-weight: 900;
-    text-align: center;
-    min-width: 70px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-}}
-
-.med-body {{
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 24px;
-    margin: 24px 0;
-    flex: 1;
-}}
-
-.med-image-container {{
-    width: 180px;
-    height: 220px;
-    border-radius: 24px;
-    position: relative;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    overflow: hidden;
-}}
-
-.image-glow {{
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    border-radius: 24px;
-    filter: blur(30px);
-    opacity: 0.4;
-    z-index: 0;
-}}
-
-.img-wrapper {{
-    position: relative;
-    width: 140px;
-    height: 140px;
-    z-index: 1;
-}}
-
-.img-base {{
-    position: absolute;
-    width: 140px;
-    height: 140px;
-    filter: grayscale(100%) brightness(0.3);
-    opacity: 0.4;
-    z-index: 1;
-}}
-
-.img-fill-container {{
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 140px;
-    overflow: hidden;
-    z-index: 2;
-    transition: height 1.5s cubic-bezier(0.4, 0, 0.2, 1);
-}}
-
-.img-colored {{
-    position: absolute;
-    bottom: 0;
-    width: 140px;
-    height: 140px;
-}}
-
-.img-shimmer {{
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 140px;
-    height: 140px;
-    z-index: 3;
-    pointer-events: none;
-}}
-
-.med-thermo {{
-    width: 110px;
-    height: 210px;
-}}
-
-/* ==================== OVERLAY DONACIÓN ==================== */
 .donation-overlay {{
     position: fixed;
     top: 30px;
     right: 30px;
     padding: 20px 28px;
-    background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(8, 15, 30, 0.98) 100%);
-    backdrop-filter: blur(30px) saturate(180%);
+    background: rgba(15, 23, 42, 0.98);
     border: 1px solid rgba(0, 212, 255, 0.4);
     border-radius: 20px;
     font-weight: 700;
@@ -974,10 +681,75 @@ body::after {{
 
 <body>
 
+<div class="main">
+
+    <div class="header">
+        <div style="display:flex; gap:20px; align-items:center;">
+            <div class="logo">CÍRCULO<br>DE<br>GENEROSIDAD</div>
+
+            <div>
+                <div class="title">Círculo de Generosidad 2026</div>
+                <div class="subtitle">Actualizado automáticamente - {fecha_hoy}</div>
+            </div>
+        </div>
+
+        <div class="header-badge">💙 En progreso</div>
+    </div>
+
+
+    <div class="summary">
+        <div class="summary-card">
+            <div class="summary-label">Total recaudado</div>
+            <div class="summary-number">{formatear_numero(total_recaudado)}</div>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-label">Meta total</div>
+            <div class="summary-number">{formatear_numero(total_meta)}</div>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-label">Avance global</div>
+
+            <div class="global-progress">
+                <div class="progress-track">
+                    <div class="progress-active"></div>
+                </div>
+                <div class="progress-percent">{porcentaje_total:.1f}%</div>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="panel">
+
+        <div class="panel-card">
+            <div class="panel-label">Medicamento más crítico</div>
+            <div class="panel-title">{critico_nombre}</div>
+            <div class="panel-info">Avance: {critico_pct:.1f}% | Faltan: {formatear_numero(critico_faltante)}</div>
+        </div>
+
+        <div class="panel-card">
+            <div class="panel-label">Medicamento más avanzado</div>
+            <div class="panel-title">{mas_av_nombre}</div>
+            <div class="panel-info">Avance: {mas_av_pct:.1f}%</div>
+        </div>
+
+    </div>
+
+
+    <div class="grid">
+        {cards_html}
+    </div>
+
+</div>
+
+
 <!-- OVERLAY ÚLTIMA DONACIÓN -->
 <div class="donation-overlay">
     <div class="donation-header">🎁 Última donación</div>
     <div class="donation-name">{ultimo_donante}</div>
+
     <div class="donation-details">
         <div class="donation-detail">
             <div class="donation-detail-label">Monto</div>
@@ -989,6 +761,7 @@ body::after {{
         </div>
     </div>
 </div>
+
 
 <script>
     const mostrarConfeti = {str(st.session_state.mostrar_confeti).lower()};

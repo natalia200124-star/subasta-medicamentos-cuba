@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import streamlit.components.v1 as components
-import time
+from streamlit_autorefresh import st_autorefresh
 
 # ==============================
 # CONFIGURACIÓN PRINCIPAL
@@ -12,6 +12,13 @@ st.set_page_config(
     page_icon="🏥",
     layout="wide"
 )
+
+# ==============================
+# AUTO-REFRESH CADA 5 SEGUNDOS
+# ==============================
+# Esto actualiza automáticamente la página cada 5 segundos
+st_autorefresh(interval=5000, key="datarefresh")
+
 
 # ==============================
 # LINKS CSV
@@ -24,7 +31,7 @@ CSV_METAS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSQ-JoPi55tEnwRnP_S
 # FUNCIONES
 # ==============================
 def cargar_datos():
-    """Carga datos SIN cache - actualización inmediata garantizada"""
+    """Carga datos directamente sin cache"""
     donaciones = pd.read_csv(CSV_DONACIONES)
     metas = pd.read_csv(CSV_METAS)
     return donaciones, metas
@@ -263,21 +270,18 @@ COLORES_MEDICAMENTOS = [
 
 
 # ==============================
-# ✅ IMÁGENES DE MEDICAMENTOS REALES - SIN JERINGAS NI INSTRUMENTAL
+# ✅ IMÁGENES CORRECTAS DE MEDICAMENTOS - VERIFICADAS
 # ==============================
 IMG_MAP = {
-    "multivitaminas (gotas)": "https://cdn-icons-png.flaticon.com/512/3774/3774239.png",  # Frasco con gotero
-    "vitaminas c (gotas)": "https://cdn-icons-png.flaticon.com/512/2966/2966327.png",  # Cápsula de vitamina
-    "vitamina a y d2 (gotas)": "https://cdn-icons-png.flaticon.com/512/3209/3209265.png",  # Jarabe/frasco líquido
-    "vitamina d2 forte (gotas)": "https://cdn-icons-png.flaticon.com/512/3643/3643747.png",  # Gotero/gotas
-    "vitamina b (gotas)": "https://cdn-icons-png.flaticon.com/512/10473/10473325.png",  # Pastillas/tabletas
-    "fumarato ferroso en suspensión": "https://cdn-icons-png.flaticon.com/512/2785/2785629.png",  # Botella de medicina líquida
+    "multivitaminas (gotas)": "https://cdn-icons-png.flaticon.com/512/2966/2966334.png",  # Frasco medicina con etiqueta
+    "vitaminas c (gotas)": "https://cdn-icons-png.flaticon.com/512/3209/3209231.png",  # Cápsula píldora
+    "vitamina a y d2 (gotas)": "https://cdn-icons-png.flaticon.com/512/3643/3643913.png",  # Frasco de jarabe líquido
+    "vitamina d2 forte (gotas)": "https://cdn-icons-png.flaticon.com/512/2785/2785421.png",  # Gotero medicinal
+    "vitamina b (gotas)": "https://cdn-icons-png.flaticon.com/512/2785/2785457.png",  # Blister de pastillas
+    "fumarato ferroso en suspensión": "https://cdn-icons-png.flaticon.com/512/3774/3774299.png",  # Botella suspensión
 }
 
-DEFAULT_IMG = "https://cdn-icons-png.flaticon.com/512/3774/3774299.png"  # Medicamento genérico
-
-# ✅ Imagen especial del corazón (mantener la original o usar una bonita)
-CORAZON_IMG = "https://cdn-icons-png.flaticon.com/512/833/833472.png"  # Corazón ilustrado bonito
+DEFAULT_IMG = "https://cdn-icons-png.flaticon.com/512/2966/2966327.png"  # Medicamento cápsula genérico
 
 
 # ==============================
@@ -299,7 +303,14 @@ else:
     mas_av_nombre = "N/A"
     mas_av_pct = 0
 
-hay_meta_completa = (avance["porcentaje"] >= 100).any() if len(avance) > 0 else False
+# ✅ CONFETI INTELIGENTE - Solo si algún medicamento está entre 90-100%
+medicamentos_cerca_meta = []
+for _, r in avance.iterrows():
+    pct = float(r["porcentaje"])
+    if 90 <= pct <= 100:
+        medicamentos_cerca_meta.append(r["medicamento"])
+
+mostrar_confeti = len(medicamentos_cerca_meta) > 0
 
 
 # ==============================
@@ -1137,9 +1148,16 @@ body::after {{
 </div>
 
 <script>
-    const metaCompleta = {str(hay_meta_completa).lower()};
+    // ✅ CONFETI INTELIGENTE - Solo si hay medicamentos entre 90-100%
+    const mostrarConfeti = {str(mostrar_confeti).lower()};
     
-    if(metaCompleta) {{
+    // Usar sessionStorage para evitar repetir confeti en la misma sesión
+    const yaSeDisparo = sessionStorage.getItem('confeti_disparado');
+    
+    if(mostrarConfeti && !yaSeDisparo) {{
+        // Marcar que ya se disparó en esta sesión
+        sessionStorage.setItem('confeti_disparado', 'true');
+        
         // Celebración cuando se alcanza meta
         confetti({{
             particleCount: 300,
@@ -1168,11 +1186,6 @@ body::after {{
             }});
         }}, 400);
     }}
-
-    // ✅ ACTUALIZACIÓN EN TIEMPO REAL - RECARGA CADA 3 SEGUNDOS
-    setTimeout(function() {{
-        location.reload(true);
-    }}, 3000);
 </script>
 
 </body>
@@ -1180,7 +1193,3 @@ body::after {{
 """
 
 components.html(html, height=1400, scrolling=True)
-
-# ✅ ACTUALIZACIÓN DIRECTA - Recarga cada 3 segundos
-time.sleep(3)
-st.rerun()

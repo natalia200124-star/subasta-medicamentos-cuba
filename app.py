@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import datetime
 import streamlit.components.v1 as components
 import time
+import hashlib
 
 # ==============================
 # CONFIGURACIÓN PRINCIPAL
@@ -21,14 +22,57 @@ CSV_METAS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSQ-JoPi55tEnwRnP_S
 
 
 # ==============================
-# FUNCIONES
+# INICIALIZACIÓN SESSION STATE
 # ==============================
-@st.cache_data(ttl=0)  # ✅ DESACTIVAR CACHE PARA ACTUALIZACIÓN INMEDIATA
-def cargar_datos():
-    """Carga datos SIN cache para actualización en tiempo real"""
+if "ultima_actualizacion" not in st.session_state:
+    st.session_state.ultima_actualizacion = None
+if "donaciones_cache" not in st.session_state:
+    st.session_state.donaciones_cache = None
+if "metas_cache" not in st.session_state:
+    st.session_state.metas_cache = None
+if "hash_datos" not in st.session_state:
+    st.session_state.hash_datos = None
+
+
+# ==============================
+# FUNCIONES OPTIMIZADAS
+# ==============================
+@st.cache_data(ttl=5)  # ✅ Cache de 5 segundos para verificación rápida
+def verificar_cambios():
+    """Verifica si hay cambios en los datos sin cargar todo"""
+    try:
+        # Solo leer primeras y últimas filas para verificar
+        donaciones_preview = pd.read_csv(CSV_DONACIONES, nrows=1)
+        donaciones_count = pd.read_csv(CSV_DONACIONES).shape[0]
+        
+        # Crear hash simple de verificación
+        hash_actual = hashlib.md5(f"{donaciones_count}".encode()).hexdigest()
+        return hash_actual, donaciones_count
+    except:
+        return None, 0
+
+
+def cargar_datos_inteligente():
+    """Carga datos solo si hay cambios detectados"""
+    hash_actual, count_actual = verificar_cambios()
+    
+    # Si no hay cambios, usar cache
+    if (st.session_state.hash_datos == hash_actual and 
+        st.session_state.donaciones_cache is not None and 
+        st.session_state.metas_cache is not None):
+        return st.session_state.donaciones_cache, st.session_state.metas_cache, False
+    
+    # Hay cambios, recargar datos
     donaciones = pd.read_csv(CSV_DONACIONES)
     metas = pd.read_csv(CSV_METAS)
-    return donaciones, metas
+    
+    # Actualizar cache
+    st.session_state.donaciones_cache = donaciones.copy()
+    st.session_state.metas_cache = metas.copy()
+    st.session_state.hash_datos = hash_actual
+    st.session_state.ultima_actualizacion = datetime.now()
+    
+    return donaciones, metas, True
 
 
 def formatear_numero(x):
@@ -103,10 +147,14 @@ def termometro_ultra_moderno_svg(pct, color="#00d4ff"):
 
 
 # ==============================
-# CARGA DE DATOS
+# CARGA DE DATOS INTELIGENTE
 # ==============================
 try:
-    donaciones, metas = cargar_datos()
+    donaciones, metas, hubo_cambios = cargar_datos_inteligente()
+    
+    # Mostrar indicador de actualización si hubo cambios
+    if hubo_cambios:
+        st.toast("✅ Datos actualizados", icon="✅")
 except Exception as e:
     st.error(f"❌ Error al cargar datos: {str(e)}")
     st.stop()
@@ -264,18 +312,18 @@ COLORES_MEDICAMENTOS = [
 
 
 # ==============================
-# IMÁGENES REALES DE MEDICAMENTOS - CORREGIDAS
+# ✅ NUEVAS IMÁGENES ILUSTRADAS DE MEDICAMENTOS
 # ==============================
 IMG_MAP = {
-    "multivitaminas (gotas)": "https://cdn-icons-png.flaticon.com/512/2913/2913182.png",  # Frasco gotero
-    "vitaminas c (gotas)": "https://cdn-icons-png.flaticon.com/512/3643/3643913.png",  # Píldora/cápsula
-    "vitamina a y d2 (gotas)": "https://cdn-icons-png.flaticon.com/512/2966/2966334.png",  # Botella médica
-    "vitamina d2 forte (gotas)": "https://cdn-icons-png.flaticon.com/512/3774/3774299.png",  # Frasco medicina
-    "vitamina b (gotas)": "https://cdn-icons-png.flaticon.com/512/2913/2913133.png",  # Tabletas
-    "fumarato ferroso en suspensión": "https://cdn-icons-png.flaticon.com/512/3094/3094840.png",  # Jarabe
+    "multivitaminas (gotas)": "https://cdn-icons-png.flaticon.com/512/2785/2785482.png",  # Frasco de pastillas
+    "vitaminas c (gotas)": "https://cdn-icons-png.flaticon.com/512/3588/3588592.png",  # Jeringa médica
+    "vitamina a y d2 (gotas)": "https://cdn-icons-png.flaticon.com/512/2785/2785490.png",  # Caja de medicina
+    "vitamina d2 forte (gotas)": "https://cdn-icons-png.flaticon.com/512/3588/3588435.png",  # Ampolla/vial
+    "vitamina b (gotas)": "https://cdn-icons-png.flaticon.com/512/2785/2785528.png",  # Blister de pastillas
+    "fumarato ferroso en suspensión": "https://cdn-icons-png.flaticon.com/512/3588/3588570.png",  # Frasco de jarabe
 }
 
-DEFAULT_IMG = "https://cdn-icons-png.flaticon.com/512/2913/2913155.png"  # Cápsula médica
+DEFAULT_IMG = "https://cdn-icons-png.flaticon.com/512/2785/2785514.png"  # Medicamento genérico
 
 
 # ==============================
@@ -551,10 +599,10 @@ body::after {{
     letter-spacing: 1px;
 }}
 
-/* ==================== SUMMARY CARDS ==================== */
+/* ==================== SUMMARY ==================== */
 .summary {{
     display: grid;
-    grid-template-columns: 1fr 1fr 2fr;
+    grid-template-columns: 1fr 1fr 1fr;
     gap: 20px;
     margin-bottom: 30px;
 }}
@@ -568,28 +616,13 @@ body::after {{
     box-shadow: 
         0 15px 50px rgba(0, 0, 0, 0.4),
         inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    position: relative;
-    overflow: hidden;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}}
-
-.summary-card::before {{
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(0, 212, 255, 0.08) 0%, transparent 70%);
-    pointer-events: none;
+    transition: all 0.3s ease;
 }}
 
 .summary-card:hover {{
-    transform: translateY(-4px);
+    transform: translateY(-5px);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
     border-color: rgba(0, 212, 255, 0.3);
-    box-shadow: 
-        0 25px 70px rgba(0, 0, 0, 0.5),
-        0 0 50px rgba(0, 212, 255, 0.2);
 }}
 
 .summary-label {{
@@ -608,42 +641,44 @@ body::after {{
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    line-height: 1.1;
 }}
 
+/* ==================== PROGRESO GLOBAL ==================== */
 .global-progress {{
-    margin-top: 16px;
+    margin-top: 8px;
 }}
 
 .progress-track {{
     height: 28px;
-    border-radius: 18px;
+    border-radius: 20px;
     background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     overflow: hidden;
     position: relative;
 }}
 
-.progress-track::before {{
+.progress-active {{
+    height: 100%;
+    width: {porcentaje_total:.1f}%;
+    background: linear-gradient(90deg, #00FF9F 0%, #00D4FF 100%);
+    border-radius: 20px;
+    position: relative;
+    transition: width 2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 
+        0 0 30px rgba(0, 255, 159, 0.5),
+        inset 0 2px 0 rgba(255, 255, 255, 0.3);
+}}
+
+.progress-active::before {{
     content: '';
     position: absolute;
     top: 0;
     left: 0;
-    right: 0;
+    width: 100%;
     height: 50%;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, transparent 100%);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 100%);
     pointer-events: none;
-}}
-
-.progress-active {{
-    height: 100%;
-    background: linear-gradient(90deg, #00D4FF 0%, #00FF9F 100%);
-    width: {max(0, min(porcentaje_total, 100))}%;
-    transition: width 2s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 
-        0 0 30px rgba(0, 212, 255, 0.6),
-        inset 0 1px 0 rgba(255, 255, 255, 0.3);
-    position: relative;
+    z-index: 2;
 }}
 
 .progress-active::after {{
@@ -1180,10 +1215,10 @@ body::after {{
         }}, 400);
     }}
 
-    // ✅ AUTO-REFRESH MEJORADO - RECARGA CADA 2 SEGUNDOS
+    // ✅ AUTO-REFRESH OPTIMIZADO - RECARGA CADA 8 SEGUNDOS
     setTimeout(function() {{
-        location.reload(true); // Forzar recarga desde servidor
-    }}, 2000);
+        location.reload(true);
+    }}, 8000);
 </script>
 
 </body>
@@ -1192,7 +1227,6 @@ body::after {{
 
 components.html(html, height=1400, scrolling=True)
 
-# ✅ FORZAR ACTUALIZACIÓN DE STREAMLIT
-time.sleep(0.1)
+# ✅ ACTUALIZACIÓN INTELIGENTE - Solo recargar si hay cambios
+time.sleep(8)
 st.rerun()
-

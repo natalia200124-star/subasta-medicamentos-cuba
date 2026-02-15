@@ -17,24 +17,9 @@ st.set_page_config(
     layout="wide"
 )
 # ==============================
-# FUNCIONES
+# AUTO-REFRESH
 # ==============================
-def cargar_datos():
-    # todo tu código de carga aquí...
-    pass
-# ==============================
-# AUTO-REFRESH SIN OSCURECER PANTALLA
-# ==============================
-# Intervalo en milisegundos (8000 = 8 segundos)
-st_autorefresh(interval=8000, key="datarefresh")
-
-# Cargar datos
-try:
-    donaciones, metas = cargar_datos()  # <-- la función ya debe estar definida arriba
-except Exception as e:
-    st.error(f"❌ Error al cargar datos: {str(e)}")
-    st.stop()
-
+count = st_autorefresh(interval=8000, key="datarefresh")
 # ==============================
 # CARGA DE DATOS DESDE API (APPS SCRIPT)
 # ==============================

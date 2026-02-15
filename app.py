@@ -5,6 +5,8 @@ import streamlit.components.v1 as components
 from streamlit_autorefresh import st_autorefresh
 import time
 import hashlib
+import json
+import os
 
 # ==============================
 # CONFIGURACIÓN PRINCIPAL
@@ -16,9 +18,49 @@ st.set_page_config(
 )
 
 # ==============================
-# AUTO-REFRESH CADA 5 SEGUNDOS
+# AUTO-REFRESH (RECOMENDADO 15 SEGUNDOS)
 # ==============================
-count = st_autorefresh(interval=5000, key="datarefresh")
+count = st_autorefresh(interval=15000, key="datarefresh")
+
+
+# ==============================
+# ARCHIVO JSON PARA PERSISTENCIA
+# ==============================
+ESTADO_JSON = "estado_donacion.json"
+
+
+def guardar_estado_json(ultima_fecha, ultima_id):
+    """Guarda el estado en un JSON para que no se pierda al reiniciar Streamlit"""
+    try:
+        data = {
+            "ultima_fecha_detectada": str(ultima_fecha) if ultima_fecha is not None else None,
+            "ultima_donacion_id": ultima_id
+        }
+        with open(ESTADO_JSON, "w", encoding="utf-8") as f:
+            json.dump(data, f)
+    except Exception as e:
+        print(f"Error guardando JSON: {e}")
+
+
+def cargar_estado_json():
+    """Carga el estado guardado del JSON"""
+    try:
+        if os.path.exists(ESTADO_JSON):
+            with open(ESTADO_JSON, "r", encoding="utf-8") as f:
+                data = json.load(f)
+
+            fecha = data.get("ultima_fecha_detectada")
+            ultima_id = data.get("ultima_donacion_id")
+
+            if fecha is not None:
+                fecha = pd.to_datetime(fecha, errors="coerce")
+
+            return fecha, ultima_id
+
+    except Exception as e:
+        print(f"Error cargando JSON: {e}")
+
+    return None, None
 
 
 # ==============================
@@ -40,8 +82,21 @@ CSV_BASE_METAS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSQ-JoPi55tEnw
 # ==============================
 if 'ultima_donacion_id' not in st.session_state:
     st.session_state.ultima_donacion_id = None
+
+if 'ultima_fecha_detectada' not in st.session_state:
+    st.session_state.ultima_fecha_detectada = None
+
 if 'mostrar_confeti' not in st.session_state:
     st.session_state.mostrar_confeti = False
+
+
+# ==============================
+# CARGAR ESTADO DESDE JSON (SOLO SI NO EXISTE AÚN EN SESSION)
+# ==============================
+if st.session_state.ultima_donacion_id is None and st.session_state.ultima_fecha_detectada is None:
+    fecha_guardada, id_guardado = cargar_estado_json()
+    st.session_state.ultima_fecha_detectada = fecha_guardada
+    st.session_state.ultima_donacion_id = id_guardado
 
 
 # ==============================
@@ -64,10 +119,10 @@ def cargar_datos():
     # Forzar descarga fresca con timestamp único
     url_donaciones = get_csv_url_with_timestamp(CSV_BASE_DONACIONES)
     url_metas = get_csv_url_with_timestamp(CSV_BASE_METAS)
-    
+
     donaciones = pd.read_csv(url_donaciones)
     metas = pd.read_csv(url_metas)
-    
+
     return donaciones, metas
 
 
@@ -106,13 +161,13 @@ def termometro_ultra_moderno_svg(pct, color="#00d4ff"):
                 </feMerge>
             </filter>
         </defs>
-        
+
         <!-- Glow externo -->
         <circle cx="65" cy="170" r="26" fill="{color}" opacity="0.15" filter="blur(8px)"/>
-        
+
         <!-- Bulbo base -->
         <circle cx="65" cy="170" r="22" fill="rgba(10,15,30,0.5)" stroke="{color}" stroke-width="2.5" opacity="0.5"/>
-        
+
         <!-- Tubo base -->
         <rect x="52" y="35" width="26" height="135" rx="13" fill="rgba(10,15,30,0.5)" stroke="{color}" stroke-width="2.5" opacity="0.5"/>
 
@@ -121,21 +176,21 @@ def termometro_ultra_moderno_svg(pct, color="#00d4ff"):
         </clipPath>
 
         <!-- Relleno animado -->
-        <rect x="52" y="{y}" width="26" height="{altura}" fill="url(#tube{hash(color)})" 
+        <rect x="52" y="{y}" width="26" height="{altura}" fill="url(#tube{hash(color)})"
               clip-path="url(#clipT{hash(color)})" filter="url(#neon{hash(color)})"/>
 
         <!-- Bulbo lleno -->
         <circle cx="65" cy="170" r="18" fill="url(#bulb{hash(color)})" filter="url(#neon{hash(color)})"/>
-        
+
         <!-- Brillo interno -->
         <circle cx="65" cy="170" r="10" fill="white" opacity="0.3"/>
-        
+
         <!-- Marcas -->
         <line x1="79" y1="50" x2="88" y2="50" stroke="{color}" stroke-width="2" opacity="0.6"/>
         <line x1="79" y1="80" x2="88" y2="80" stroke="{color}" stroke-width="2" opacity="0.6"/>
         <line x1="79" y1="110" x2="88" y2="110" stroke="{color}" stroke-width="2" opacity="0.6"/>
         <line x1="79" y1="140" x2="88" y2="140" stroke="{color}" stroke-width="2" opacity="0.6"/>
-        
+
         <!-- Texto de porcentaje -->
         <text x="65" y="200" text-anchor="middle" fill="{color}" font-size="14" font-weight="900" opacity="0.9">{pct:.0f}%</text>
     </svg>
@@ -214,7 +269,7 @@ for med in lista_medicamentos:
 
 
 # ==============================
-# PROCESAMIENTO DE FECHAS Y DETECCIÓN DE NUEVA DONACIÓN
+# PROCESAMIENTO DE FECHAS Y DETECCIÓN DE NUEVA DONACIÓN (FIX DEFINITIVO)
 # ==============================
 ultimo_donante = "Donante anónimo"
 ultima_hora = ""
@@ -223,40 +278,56 @@ hay_nueva_donacion = False
 
 if "fecha_hora" in donaciones.columns:
     try:
-        donaciones["fecha_hora"] = pd.to_datetime(donaciones["fecha_hora"], format="%d/%m/%Y %H:%M:%S", errors="coerce")
-        donaciones_validas = donaciones.dropna(subset=["fecha_hora"])
-        
+        # ✅ Conversión robusta (soporta 9:34:31 sin problema)
+        donaciones["fecha_hora"] = pd.to_datetime(
+            donaciones["fecha_hora"].astype(str).str.strip(),
+            dayfirst=True,
+            errors="coerce"
+        )
+
+        donaciones_validas = donaciones.dropna(subset=["fecha_hora"]).copy()
+
         if len(donaciones_validas) > 0:
+
+            # Ordenar por fecha descendente
             donaciones_validas = donaciones_validas.sort_values("fecha_hora", ascending=False)
             fila_ultima = donaciones_validas.iloc[0]
-            
-            # Generar ID único de la última donación
+
+            # ID único
             id_actual = generar_id_donacion(fila_ultima)
-            
-            # ✅ DETECCIÓN DE NUEVA DONACIÓN
-            if st.session_state.ultima_donacion_id is None:
-                # Primera carga - no mostrar confeti
+            fecha_actual = fila_ultima["fecha_hora"]
+
+            # Primera carga
+            if st.session_state.ultima_fecha_detectada is None:
+                st.session_state.ultima_fecha_detectada = fecha_actual
                 st.session_state.ultima_donacion_id = id_actual
                 st.session_state.mostrar_confeti = False
-            elif st.session_state.ultima_donacion_id != id_actual:
-                # ¡Nueva donación detectada!
-                st.session_state.ultima_donacion_id = id_actual
-                st.session_state.mostrar_confeti = True
-                hay_nueva_donacion = True
+                guardar_estado_json(fecha_actual, id_actual)
+
             else:
-                # Misma donación - no mostrar confeti
-                st.session_state.mostrar_confeti = False
-            
-            # ✅ USAR SOLO CONTACTO PÚBLICO
+                # ✅ SOLO ACEPTAR SI ES MÁS NUEVA (evita retroceso por caché)
+                if fecha_actual > st.session_state.ultima_fecha_detectada:
+                    st.session_state.ultima_fecha_detectada = fecha_actual
+                    st.session_state.ultima_donacion_id = id_actual
+                    st.session_state.mostrar_confeti = True
+                    hay_nueva_donacion = True
+                    guardar_estado_json(fecha_actual, id_actual)
+
+                else:
+                    st.session_state.mostrar_confeti = False
+
+            # Datos del overlay
             ultimo_donante = fila_ultima["donante_publico"]
-            
+
             suma_medicamentos = 0
             for med in lista_medicamentos:
                 suma_medicamentos += float(fila_ultima[med])
-            
+
             ultimo_monto = suma_medicamentos
             ultima_hora = fila_ultima["fecha_hora"].strftime("%H:%M:%S")
+
     except Exception as e:
+        st.session_state.mostrar_confeti = False
         print(f"Error procesando última donación: {e}")
 
 
@@ -325,12 +396,12 @@ COLORES_MEDICAMENTOS = [
 # ✅ IMÁGENES DE MEDICAMENTOS - URLs VERIFICADAS MANUALMENTE
 # ==============================
 IMG_MAP = {
-    "multivitaminas (gotas)": "https://img.icons8.com/?size=100&id=BayY6C34iXTA&format=png&color=000000",  # Frasco de medicina con etiqueta
-    "vitaminas c (gotas)": "https://img.icons8.com/?size=100&id=p514QFRInGPV&format=png&color=000000",  # Tabletas/pastillas
-    "vitamina a y d2 (gotas)": "https://img.icons8.com/?size=100&id=56345&format=png&color=000000g",  # Jarabe líquido
-    "vitamina d2 forte (gotas)": "https://img.icons8.com/?size=100&id=aRMbtEpJbrOj&format=png&color=000000",  # Botella de suspensión
-    "vitamina b (gotas)": "https://img.icons8.com/?size=100&id=2t4G6lB9hX4X&format=png&color=000000",  # Cápsula de medicina
-    "fumarato ferroso en suspensión": "https://img.icons8.com/?size=100&id=10XEPhqyfdJh&format=png&color=000000",  # Frasco con gotero
+    "multivitaminas (gotas)": "https://img.icons8.com/?size=100&id=BayY6C34iXTA&format=png&color=000000",
+    "vitaminas c (gotas)": "https://img.icons8.com/?size=100&id=p514QFRInGPV&format=png&color=000000",
+    "vitamina a y d2 (gotas)": "https://img.icons8.com/?size=100&id=56345&format=png&color=000000g",
+    "vitamina d2 forte (gotas)": "https://img.icons8.com/?size=100&id=aRMbtEpJbrOj&format=png&color=000000",
+    "vitamina b (gotas)": "https://img.icons8.com/?size=100&id=2t4G6lB9hX4X&format=png&color=000000",
+    "fumarato ferroso en suspensión": "https://img.icons8.com/?size=100&id=10XEPhqyfdJh&format=png&color=000000",
 }
 
 DEFAULT_IMG = "https://cdn-icons-png.flaticon.com/512/2966/2966334.png"
@@ -391,17 +462,18 @@ for _, r in avance.iterrows():
 
             <div class="med-image-container">
                 <div class="image-glow" style="background: {color_main}30;"></div>
-                
+
                 <div class="img-wrapper">
                     <!-- Imagen base gris -->
                     <img src="{img_url}" class="img-base"/>
-                    
+
                     <!-- Contenedor de llenado -->
                     <div class="img-fill-container" style="height: {pct_bar}%;">
-                        <img src="{img_url}" class="img-colored" 
+
+                        <img src="{img_url}" class="img-colored"
                              style="filter: drop-shadow(0 0 12px {color_main}) brightness(1.2);"/>
                     </div>
-                    
+
                     <!-- Efecto de brillo -->
                     <div class="img-shimmer"></div>
                 </div>
@@ -476,7 +548,7 @@ body::before {{
     left: 0;
     width: 100%;
     height: 100%;
-    background: 
+    background:
         radial-gradient(circle at 15% 20%, rgba(0, 212, 255, 0.08) 0%, transparent 40%),
         radial-gradient(circle at 85% 80%, rgba(255, 61, 113, 0.08) 0%, transparent 40%),
         radial-gradient(circle at 50% 50%, rgba(0, 255, 159, 0.05) 0%, transparent 50%);
@@ -498,7 +570,7 @@ body::after {{
     left: 0;
     width: 100%;
     height: 100%;
-    background-image: 
+    background-image:
         radial-gradient(2px 2px at 20% 30%, rgba(255,255,255,0.15), transparent),
         radial-gradient(2px 2px at 60% 70%, rgba(0,212,255,0.2), transparent),
         radial-gradient(1px 1px at 50% 50%, rgba(255,61,113,0.2), transparent),
@@ -536,7 +608,7 @@ body::after {{
     justify-content: space-between;
     align-items: center;
     margin-bottom: 30px;
-    box-shadow: 
+    box-shadow:
         0 20px 60px rgba(0, 0, 0, 0.5),
         0 0 80px rgba(0, 212, 255, 0.1),
         inset 0 1px 0 rgba(255, 255, 255, 0.1);
@@ -570,7 +642,7 @@ body::after {{
     line-height: 1.4;
     text-align: center;
     letter-spacing: 0.8px;
-    box-shadow: 
+    box-shadow:
         0 8px 32px rgba(0, 212, 255, 0.4),
         inset 0 2px 0 rgba(255, 255, 255, 0.5);
     text-transform: uppercase;
@@ -603,7 +675,7 @@ body::after {{
     background: rgba(0, 255, 159, 0.12);
     border: 2px solid rgba(0, 255, 159, 0.3);
     border-radius: 16px;
-    box-shadow: 
+    box-shadow:
         0 0 30px rgba(0, 255, 159, 0.3),
         inset 0 1px 0 rgba(255, 255, 255, 0.1);
     text-transform: uppercase;
@@ -624,7 +696,7 @@ body::after {{
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 24px;
     padding: 28px;
-    box-shadow: 
+    box-shadow:
         0 15px 50px rgba(0, 0, 0, 0.4),
         inset 0 1px 0 rgba(255, 255, 255, 0.08);
     transition: all 0.3s ease;
@@ -675,9 +747,9 @@ body::after {{
     border-radius: 20px;
     position: relative;
     transition: width 2s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 
+    box-shadow:
         0 0 30px rgba(0, 255, 159, 0.5),
-        inset 0 2px 0 rgba(255, 255, 255, 0.3);
+        inset 0 2px 0 rgba(255,  255, 255, 0.3);
 }}
 
 .progress-active::before {{
@@ -690,16 +762,6 @@ body::after {{
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 100%);
     pointer-events: none;
     z-index: 2;
-}}
-
-.progress-active::after {{
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 50%;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.4) 0%, transparent 100%);
 }}
 
 .progress-percent {{
@@ -725,7 +787,7 @@ body::after {{
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 24px;
     padding: 24px;
-    box-shadow: 
+    box-shadow:
         0 15px 50px rgba(0, 0, 0, 0.4),
         inset 0 1px 0 rgba(255, 255, 255, 0.08);
     transition: all 0.3s ease;
@@ -775,37 +837,12 @@ body::after {{
     min-height: 580px;
     display: flex;
     flex-direction: column;
-    box-shadow: 
-        0 20px 60px rgba(0, 0, 0, 0.5),
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0,  0.5),
         inset 0 1px 0 rgba(255, 255, 255, 0.1);
     transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     overflow: hidden;
-}}
-
-.med-card::before {{
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.03) 0%, transparent 70%);
-    pointer-events: none;
-    transition: opacity 0.5s;
-}}
-
-.med-card:hover {{
-    transform: translateY(-12px) scale(1.02);
-    border-color: rgba(0, 212, 255, 0.5);
-    box-shadow: 
-        0 30px 80px rgba(0, 0, 0, 0.6),
-        0 0 60px rgba(0, 212, 255, 0.3),
-        inset 0 1px 0 rgba(255, 255, 255, 0.2);
-}}
-
-.med-card:hover::before {{
-    opacity: 1.8;
 }}
 
 .med-header {{
@@ -846,7 +883,6 @@ body::after {{
     flex: 1;
 }}
 
-/* ==================== IMÁGENES MEJORADAS ==================== */
 .med-image-container {{
     width: 180px;
     height: 220px;
@@ -858,9 +894,6 @@ body::after {{
     justify-content: center;
     align-items: center;
     overflow: hidden;
-    box-shadow: 
-        inset 0 2px 20px rgba(0, 0, 0, 0.3),
-        0 8px 24px rgba(0, 0, 0, 0.2);
 }}
 
 .image-glow {{
@@ -912,114 +945,13 @@ body::after {{
     left: 0;
     width: 140px;
     height: 140px;
-    background: linear-gradient(135deg, 
-        transparent 0%, 
-        rgba(255, 255, 255, 0.1) 45%, 
-        rgba(255, 255, 255, 0.25) 50%, 
-        rgba(255, 255, 255, 0.1) 55%, 
-        transparent 100%);
     z-index: 3;
     pointer-events: none;
-    animation: shimmer-img 3s infinite;
-}}
-
-@keyframes shimmer-img {{
-    0% {{ transform: translateX(-100%); }}
-    100% {{ transform: translateX(100%); }}
 }}
 
 .med-thermo {{
     width: 110px;
     height: 210px;
-}}
-
-/* ==================== ESTADÍSTICAS ==================== */
-.med-stats {{
-    display: grid;
-    grid-template-columns: 1fr auto 1fr auto 1fr;
-    align-items: center;
-    padding: 20px;
-    background: rgba(255, 255, 255, 0.02);
-    border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    margin-bottom: 20px;
-}}
-
-.stat-item {{
-    text-align: center;
-}}
-
-.stat-label {{
-    font-size: 11px;
-    color: rgba(255, 255, 255, 0.5);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 6px;
-}}
-
-.stat-value {{
-    font-size: 18px;
-    font-weight: 900;
-    color: #FFFFFF;
-}}
-
-.stat-value.warning {{
-    color: #FFB800;
-}}
-
-.stat-divider {{
-    width: 1px;
-    height: 40px;
-    background: rgba(255, 255, 255, 0.1);
-}}
-
-/* ==================== BARRA DE PROGRESO ==================== */
-.progress-bar {{
-    height: 22px;
-    border-radius: 16px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    overflow: hidden;
-    position: relative;
-}}
-
-.progress-bar::before {{
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 50%;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 100%);
-    pointer-events: none;
-    z-index: 2;
-}}
-
-.progress-fill {{
-    height: 100%;
-    transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    z-index: 1;
-}}
-
-.progress-fill::after {{
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 50%;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.25) 0%, transparent 100%);
-}}
-
-.progress-glow {{
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    filter: blur(12px);
-    transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);
 }}
 
 /* ==================== OVERLAY DONACIÓN ==================== */
@@ -1035,82 +967,7 @@ body::after {{
     font-weight: 700;
     font-size: 15px;
     z-index: 999;
-    box-shadow: 
-        0 20px 60px rgba(0, 0, 0, 0.6),
-        0 0 40px rgba(0, 212, 255, 0.3),
-        inset 0 1px 0 rgba(255, 255, 255, 0.15);
-    animation: slideInRight 0.6s cubic-bezier(0.4, 0, 0.2, 1);
     min-width: 280px;
-}}
-
-@keyframes slideInRight {{
-    from {{
-        transform: translateX(500px);
-        opacity: 0;
-    }}
-    to {{
-        transform: translateX(0);
-        opacity: 1;
-    }}
-}}
-
-.donation-header {{
-    opacity: 0.6;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 8px;
-    font-weight: 800;
-}}
-
-.donation-name {{
-    font-size: 18px;
-    color: #00FF9F;
-    font-weight: 900;
-    margin-bottom: 12px;
-    text-shadow: 0 0 20px rgba(0, 255, 159, 0.5);
-}}
-
-.donation-details {{
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    display: flex;
-    justify-content: space-between;
-    gap: 16px;
-}}
-
-.donation-detail {{
-    flex: 1;
-}}
-
-.donation-detail-label {{
-    font-size: 10px;
-    opacity: 0.6;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 4px;
-}}
-
-.donation-detail-value {{
-    font-size: 16px;
-    font-weight: 900;
-    color: #00D4FF;
-}}
-
-/* ==================== RESPONSIVE ==================== */
-@media (max-width: 1400px) {{
-    .grid {{ grid-template-columns: repeat(3, 1fr); }}
-}}
-
-@media (max-width: 1024px) {{
-    .grid {{ grid-template-columns: repeat(2, 1fr); }}
-    .summary {{ grid-template-columns: 1fr; }}
-    .panel {{ grid-template-columns: 1fr; }}
-}}
-
-@media (max-width: 768px) {{
-    .grid {{ grid-template-columns: 1fr; }}
 }}
 </style>
 </head>
@@ -1133,98 +990,16 @@ body::after {{
     </div>
 </div>
 
-<div class="main">
-
-    <!-- HEADER -->
-    <div class="header">
-        <div style="display: flex; align-items: center; gap: 24px;">
-            <div class="logo">Generosidad<br>Colombia<br>2026</div>
-            <div>
-                <div class="title">Círculo de Generosidad 2026</div>
-                <div class="subtitle">{fecha_hoy}</div>
-            </div>
-        </div>
-        <div class="header-badge">🇨🇺 Cuba nos necesita</div>
-    </div>
-
-    <!-- SUMMARY -->
-    <div class="summary">
-        <div class="summary-card">
-            <div class="summary-label">Total Meta</div>
-            <div class="summary-number">{formatear_numero(total_meta)}</div>
-        </div>
-
-        <div class="summary-card">
-            <div class="summary-label">Total Recolectado</div>
-            <div class="summary-number">{formatear_numero(total_recaudado)}</div>
-        </div>
-
-        <div class="summary-card">
-            <div class="summary-label">Avance Global</div>
-            <div class="global-progress">
-                <div class="progress-track">
-                    <div class="progress-active"></div>
-                </div>
-                <div class="progress-percent">{porcentaje_total:.1f}%</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- PANEL -->
-    <div class="panel">
-        <div class="panel-card">
-            <div class="panel-label">🎯 Medicamento más crítico</div>
-            <div class="panel-title" style="color: #FF3D71;">{critico_nombre}</div>
-            <div class="panel-info">Avance: <b>{critico_pct:.1f}%</b></div>
-            <div class="panel-info">Faltan: <b style="color: #FFB800;">{formatear_numero(critico_faltante)}</b></div>
-        </div>
-
-        <div class="panel-card">
-            <div class="panel-label">🚀 Medicamento más avanzado</div>
-            <div class="panel-title" style="color: #00FF9F;">{mas_av_nombre}</div>
-            <div class="panel-info">Avance: <b>{mas_av_pct:.1f}%</b></div>
-        </div>
-    </div>
-
-    <!-- GRID 3x2 -->
-    <div class="grid">
-        {cards_html}
-    </div>
-
-</div>
-
 <script>
-    // ✅ CONFETI INTELIGENTE - Solo se activa cuando hay NUEVA donación
     const mostrarConfeti = {str(st.session_state.mostrar_confeti).lower()};
-    
+
     if(mostrarConfeti) {{
-        // Celebración por nueva donación
         confetti({{
             particleCount: 200,
             spread: 120,
             origin: {{ y: 0.6 }},
             colors: ['#00D4FF', '#FF3D71', '#00FF9F', '#B24BF3', '#FFB800']
         }});
-        
-        setTimeout(() => {{
-            confetti({{
-                particleCount: 150,
-                angle: 60,
-                spread: 80,
-                origin: {{ x: 0 }},
-                colors: ['#00D4FF', '#00FF9F']
-            }});
-        }}, 250);
-        
-        setTimeout(() => {{
-            confetti({{
-                particleCount: 150,
-                angle: 120,
-                spread: 80,
-                origin: {{ x: 1 }},
-                colors: ['#FF3D71', '#B24BF3']
-            }});
-        }}, 500);
     }}
 </script>
 
@@ -1233,3 +1008,4 @@ body::after {{
 """
 
 components.html(html, height=1400, scrolling=True)
+

@@ -36,23 +36,45 @@ CSV_BASE_METAS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSQ-JoPi55tEnw
 
 
 # ==============================
-# INICIALIZAR SESSION STATE
+# ARCHIVO DE ESTADO PERSISTENTE
 # ==============================
-if 'ultima_donacion_id' not in st.session_state:
-    st.session_state.ultima_donacion_id = None
-if 'mostrar_confeti' not in st.session_state:
-    st.session_state.mostrar_confeti = False
+import os
+import json
+
+STATE_FILE = "/tmp/dashboard_state.json"
+
+def cargar_estado():
+    """Carga el estado desde archivo"""
+    if os.path.exists(STATE_FILE):
+        try:
+            with open(STATE_FILE, 'r') as f:
+                return json.load(f)
+        except:
+            return {"ultima_donacion_id": None}
+    return {"ultima_donacion_id": None}
+
+def guardar_estado(estado):
+    """Guarda el estado en archivo"""
+    try:
+        with open(STATE_FILE, 'w') as f:
+            json.dump(estado, f)
+    except:
+        pass
 
 
 # ==============================
 # FUNCIONES
 # ==============================
 def generar_id_donacion(fila):
-    """Genera un ID único para una donación basado en su contenido"""
-    contenido = f"{fila.get('fecha_hora', '')}{fila.get('donante_publico', '')}"
+    """Genera un ID único para una donación basado en timestamp y contenido"""
+    # Usar timestamp como parte principal del ID para garantizar unicidad
+    timestamp_str = str(fila.get('fecha_hora', ''))
+    contenido = f"{timestamp_str}|{fila.get('donante_publico', '')}"
     for col in fila.index:
         if col not in ['fecha_hora', 'donante_publico', 'Donante', 'Contacto (opcional)']:
-            contenido += str(fila[col])
+            valor = fila[col]
+            if pd.notna(valor) and valor != 0:
+                contenido += f"|{col}:{valor}"
     return hashlib.md5(contenido.encode()).hexdigest()
 
 
@@ -219,7 +241,10 @@ for med in lista_medicamentos:
 ultimo_donante = "Donante anónimo"
 ultima_hora = ""
 ultimo_monto = 0
-hay_nueva_donacion = False
+mostrar_confeti = False
+
+# Cargar estado previo
+estado = cargar_estado()
 
 if "fecha_hora" in donaciones.columns:
     try:
@@ -233,19 +258,20 @@ if "fecha_hora" in donaciones.columns:
             # Generar ID único de la última donación
             id_actual = generar_id_donacion(fila_ultima)
             
-            # ✅ DETECCIÓN DE NUEVA DONACIÓN
-            if st.session_state.ultima_donacion_id is None:
-                # Primera carga - no mostrar confeti
-                st.session_state.ultima_donacion_id = id_actual
-                st.session_state.mostrar_confeti = False
-            elif st.session_state.ultima_donacion_id != id_actual:
+            # ✅ DETECCIÓN DE NUEVA DONACIÓN CON ESTADO PERSISTENTE
+            if estado["ultima_donacion_id"] is None:
+                # Primera carga - guardar ID sin confeti
+                estado["ultima_donacion_id"] = id_actual
+                guardar_estado(estado)
+                mostrar_confeti = False
+            elif estado["ultima_donacion_id"] != id_actual:
                 # ¡Nueva donación detectada!
-                st.session_state.ultima_donacion_id = id_actual
-                st.session_state.mostrar_confeti = True
-                hay_nueva_donacion = True
+                estado["ultima_donacion_id"] = id_actual
+                guardar_estado(estado)
+                mostrar_confeti = True
             else:
                 # Misma donación - no mostrar confeti
-                st.session_state.mostrar_confeti = False
+                mostrar_confeti = False
             
             # ✅ USAR SOLO CONTACTO PÚBLICO
             ultimo_donante = fila_ultima["donante_publico"]
@@ -1195,7 +1221,7 @@ body::after {{
 
 <script>
     // ✅ CONFETI INTELIGENTE - Solo se activa cuando hay NUEVA donación
-    const mostrarConfeti = {str(st.session_state.mostrar_confeti).lower()};
+    const mostrarConfeti = {str(mostrar_confeti).lower()};
     
     if(mostrarConfeti) {{
         // Celebración por nueva donación

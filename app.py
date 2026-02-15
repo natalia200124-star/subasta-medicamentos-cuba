@@ -16,7 +16,12 @@ st.set_page_config(
     page_icon="🏥",
     layout="wide"
 )
-
+# ==============================
+# FUNCIONES
+# ==============================
+def cargar_datos():
+    # todo tu código de carga aquí...
+    pass
 # ==============================
 # AUTO-REFRESH SIN OSCURECER PANTALLA
 # ==============================

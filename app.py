@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import streamlit.components.v1 as components
+import time
 
 # ==============================
 # CONFIGURACIÓN PRINCIPAL
@@ -20,13 +21,27 @@ CSV_METAS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSQ-JoPi55tEnwRnP_S
 
 
 # ==============================
+# AUTO-REFRESH FORZADO
+# ==============================
+# Agregar timestamp único para forzar recarga
+if 'last_update' not in st.session_state:
+    st.session_state.last_update = time.time()
+
+# Forzar recarga cada 5 segundos
+current_time = time.time()
+if current_time - st.session_state.last_update > 5:
+    st.session_state.last_update = current_time
+    st.rerun()
+
+
+# ==============================
 # FUNCIONES
 # ==============================
-@st.cache_data(ttl=5)  # ✅ 5 SEGUNDOS - BALANCE ENTRE VELOCIDAD Y ACTUALIZACIÓN
 def cargar_datos():
-    """Carga datos con cache ligero de 5 segundos"""
-    donaciones = pd.read_csv(CSV_DONACIONES)
-    metas = pd.read_csv(CSV_METAS)
+    """Carga datos SIN CACHE - timestamp único para evitar cache"""
+    timestamp = int(time.time())
+    donaciones = pd.read_csv(f"{CSV_DONACIONES}&t={timestamp}")
+    metas = pd.read_csv(f"{CSV_METAS}&t={timestamp}")
     return donaciones, metas
 
 
@@ -228,18 +243,18 @@ COLORES_MEDICAMENTOS = [
 
 
 # ==============================
-# IMÁGENES DE MEDICAMENTOS - SOLO ILUSTRACIONES
+# IMÁGENES REALISTAS DE MEDICAMENTOS
 # ==============================
 IMG_MAP = {
-    "multivitaminas (gotas)": "https://cdn-icons-png.flaticon.com/512/3004/3004458.png",  # ✅ Frasco gotero
-    "vitaminas c (gotas)": "https://cdn-icons-png.flaticon.com/512/2966/2966493.png",  # ✅ Píldoras/tabletas
-    "vitamina a y d2 (gotas)": "https://cdn-icons-png.flaticon.com/512/2966/2966334.png",  # ✅ Botella medicina
-    "vitamina d2 forte (gotas)": "https://cdn-icons-png.flaticon.com/512/3774/3774299.png",  # ✅ Frasco medicina
-    "vitamina b (gotas)": "https://cdn-icons-png.flaticon.com/512/2913/2913133.png",  # ✅ Cápsulas
-    "fumarato ferroso en suspensión": "https://cdn-icons-png.flaticon.com/512/3037/3037069.png",  # ✅ Botella jarabe
+    "multivitaminas (gotas)": "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&h=400&fit=crop",  # ✅ Frasco ámbar gotero
+    "vitaminas c (gotas)": "https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=400&h=400&fit=crop",  # ✅ Píldoras naranjas
+    "vitamina a y d2 (gotas)": "https://images.unsplash.com/photo-1550572017-4814c6b371ae?w=400&h=400&fit=crop",  # ✅ Botella medicina azul
+    "vitamina d2 forte (gotas)": "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?w=400&h=400&fit=crop",  # ✅ Frasco ámbar medicina
+    "vitamina b (gotas)": "https://images.unsplash.com/photo-1631549916768-4119b2e5f926?w=400&h=400&fit=crop",  # ✅ Cápsulas amarillas
+    "fumarato ferroso en suspensión": "https://images.unsplash.com/photo-1603891325855-9fca83f3e42b?w=400&h=400&fit=crop",  # ✅ Jarabe rojo
 }
 
-DEFAULT_IMG = "https://cdn-icons-png.flaticon.com/512/2913/2913155.png"
+DEFAULT_IMG = "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&h=400&fit=crop"
 
 
 # ==============================
@@ -342,7 +357,7 @@ for _, r in avance.iterrows():
 
 
 # ==============================
-# HTML OPTIMIZADO
+# HTML CON META REFRESH
 # ==============================
 html = f"""
 <!DOCTYPE html>
@@ -350,6 +365,7 @@ html = f"""
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="refresh" content="5">
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
 
 <style>
@@ -615,21 +631,19 @@ body::after {{
     font-weight: 600;
 }}
 
-/* ==================== GRID COMPACTO 3x2 ==================== */
 .grid {{
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 18px;
 }}
 
-/* ==================== CARDS COMPACTAS ==================== */
 .med-card {{
     background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(8, 15, 30, 0.95) 100%);
     backdrop-filter: blur(30px);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 22px;
     padding: 20px;
-    min-height: 420px;  /* ✅ REDUCIDO de 580px a 420px */
+    min-height: 420px;
     display: flex;
     flex-direction: column;
     box-shadow: 
@@ -684,10 +698,9 @@ body::after {{
     flex: 1;
 }}
 
-/* ==================== IMÁGENES COMPACTAS ==================== */
 .med-image-container {{
-    width: 140px;  /* ✅ REDUCIDO de 180px */
-    height: 170px;  /* ✅ REDUCIDO de 220px */
+    width: 140px;
+    height: 170px;
     border-radius: 20px;
     position: relative;
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
@@ -710,7 +723,7 @@ body::after {{
 
 .img-wrapper {{
     position: relative;
-    width: 110px;  /* ✅ REDUCIDO de 140px */
+    width: 110px;
     height: 110px;
     z-index: 1;
 }}
@@ -722,6 +735,8 @@ body::after {{
     filter: grayscale(100%) brightness(0.3);
     opacity: 0.4;
     z-index: 1;
+    object-fit: cover;
+    border-radius: 8px;
 }}
 
 .img-fill-container {{
@@ -739,6 +754,8 @@ body::after {{
     bottom: 0;
     width: 110px;
     height: 110px;
+    object-fit: cover;
+    border-radius: 8px;
 }}
 
 .img-shimmer {{
@@ -764,7 +781,7 @@ body::after {{
 }}
 
 .med-thermo {{
-    width: 90px;  /* ✅ REDUCIDO de 110px */
+    width: 90px;
     height: 180px;
 }}
 
@@ -772,7 +789,7 @@ body::after {{
     display: grid;
     grid-template-columns: 1fr auto 1fr auto 1fr;
     align-items: center;
-    padding: 14px;  /* ✅ REDUCIDO de 20px */
+    padding: 14px;
     background: rgba(255, 255, 255, 0.02);
     border-radius: 14px;
     border: 1px solid rgba(255, 255, 255, 0.05);
@@ -793,7 +810,7 @@ body::after {{
 }}
 
 .stat-value {{
-    font-size: 15px;  /* ✅ REDUCIDO de 18px */
+    font-size: 15px;
     font-weight: 900;
     color: #FFFFFF;
 }}
@@ -809,7 +826,7 @@ body::after {{
 }}
 
 .progress-bar {{
-    height: 18px;  /* ✅ REDUCIDO de 22px */
+    height: 18px;
     border-radius: 14px;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.08);
@@ -1019,11 +1036,6 @@ body::after {{
             }});
         }}, 400);
     }}
-
-    // ✅ SOLO JAVASCRIPT RELOAD - SIN st.rerun()
-    setTimeout(function() {{
-        location.reload(true);
-    }}, 5000);  // 5 segundos
 </script>
 
 </body>

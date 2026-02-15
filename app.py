@@ -3,12 +3,13 @@ import pandas as pd
 from datetime import datetime
 import streamlit.components.v1 as components
 from streamlit_autorefresh import st_autorefresh
+import time
 
 # ==============================
 # CONFIGURACIÓN PRINCIPAL
 # ==============================
 st.set_page_config(
-    page_title="Círculo de Generocidad 2026 - Dashboard",
+    page_title="Círculo de Generosidad 2026 - Dashboard",
     page_icon="🏥",
     layout="wide"
 )
@@ -20,19 +21,42 @@ st_autorefresh(interval=5000, key="datarefresh")
 
 
 # ==============================
-# LINKS CSV
+# LINKS CSV CON ANTI-CACHÉ
 # ==============================
-CSV_DONACIONES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSQ-JoPi55tEnwRnP_SyYy5gawWPJoQaQ0jI4PLgDpA4CcEdKjSb2IFftcc475zBr5Ou34BTrSdZ8v9/pub?gid=1709067163&single=true&output=csv"
-CSV_METAS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSQ-JoPi55tEnwRnP_SyYy5gawWPJoQaQ0jI4PLgDpA4CcEdKjSb2IFftcc475zBr5Ou34BTrSdZ8v9/pub?gid=1531001200&single=true&output=csv"
+# ✅ SOLUCIÓN AL PROBLEMA DE CACHÉ:
+# Agregamos un timestamp único a cada URL para forzar que el navegador
+# NO use datos cacheados y siempre descargue la versión más reciente
+
+def get_csv_url_with_timestamp(base_url):
+    """Agrega un timestamp único a la URL para evitar caché del navegador"""
+    timestamp = int(time.time() * 1000)  # Timestamp en milisegundos
+    separator = "&" if "?" in base_url else "?"
+    return f"{base_url}{separator}t={timestamp}"
+
+
+CSV_BASE_DONACIONES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSQ-JoPi55tEnwRnP_SyYy5gawWPJoQaQ0jI4PLgDpA4CcEdKjSb2IFftcc475zBr5Ou34BTrSdZ8v9/pub?gid=1709067163&single=true&output=csv"
+CSV_BASE_METAS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSQ-JoPi55tEnwRnP_SyYy5gawWPJoQaQ0jI4PLgDpA4CcEdKjSb2IFftcc475zBr5Ou34BTrSdZ8v9/pub?gid=1531001200&single=true&output=csv"
+
+# Generar URLs únicas en cada carga
+CSV_DONACIONES = get_csv_url_with_timestamp(CSV_BASE_DONACIONES)
+CSV_METAS = get_csv_url_with_timestamp(CSV_BASE_METAS)
 
 
 # ==============================
 # FUNCIONES
 # ==============================
 def cargar_datos():
-    """Carga datos directamente sin cache"""
-    donaciones = pd.read_csv(CSV_DONACIONES)
-    metas = pd.read_csv(CSV_METAS)
+    """
+    Carga datos SIN CACHÉ - Siempre datos frescos
+    CRÍTICO: NO usar @st.cache_data aquí
+    """
+    # Forzar descarga fresca con timestamp único
+    url_donaciones = get_csv_url_with_timestamp(CSV_BASE_DONACIONES)
+    url_metas = get_csv_url_with_timestamp(CSV_BASE_METAS)
+    
+    donaciones = pd.read_csv(url_donaciones)
+    metas = pd.read_csv(url_metas)
+    
     return donaciones, metas
 
 
@@ -108,7 +132,7 @@ def termometro_ultra_moderno_svg(pct, color="#00d4ff"):
 
 
 # ==============================
-# CARGA DE DATOS DIRECTA
+# CARGA DE DATOS SIN CACHÉ
 # ==============================
 try:
     donaciones, metas = cargar_datos()
@@ -269,18 +293,34 @@ COLORES_MEDICAMENTOS = [
 
 
 # ==============================
-# ✅ IMÁGENES ANIMADAS DE MEDICAMENTOS - SOLO MEDICAMENTOS
+# ✅ IMÁGENES DE MEDICAMENTOS - URLs VERIFICADAS MANUALMENTE
 # ==============================
+# 🎨 CAMBIA ESTAS URLs POR LAS QUE QUIERAS
+# Busca imágenes en: https://www.flaticon.com
+# Copia la URL de la imagen y pégala aquí
+
 IMG_MAP = {
-    "multivitaminas (gotas)": "https://img.icons8.com/?size=100&id=BayY6C34iXTA&format=png&color=000000",  # Frasco de medicina con etiqueta
-    "vitaminas c (gotas)": "https://img.icons8.com/?size=100&id=p514QFRInGPV&format=png&color=000000",  # Tabletas/pastillas
-    "vitamina a y d2 (gotas)": "https://img.icons8.com/?size=100&id=56345&format=png&color=000000g",  # Jarabe líquido
-    "vitamina d2 forte (gotas)": "https://img.icons8.com/?size=100&id=aRMbtEpJbrOj&format=png&color=000000",  # Botella de suspensión
-    "vitamina b (gotas)": "https://img.icons8.com/?size=100&id=2t4G6lB9hX4X&format=png&color=000000",  # Cápsula de medicina
-    "fumarato ferroso en suspensión": "https://img.icons8.com/?size=100&id=10XEPhqyfdJh&format=png&color=000000",  # Frasco con gotero
+    # 🧴 Multivitaminas - Frasco de medicina con etiqueta
+    "multivitaminas (gotas)": "https://cdn-icons-png.flaticon.com/512/2913/2913120.png",
+    
+    # 💊 Vitaminas C - Pastillas en blister
+    "vitaminas c (gotas)": "https://cdn-icons-png.flaticon.com/512/2785/2785457.png",
+    
+    # 🍶 Vitamina A y D2 - Jarabe líquido
+    "vitamina a y d2 (gotas)": "https://cdn-icons-png.flaticon.com/512/2785/2785566.png",
+    
+    # 💧 Vitamina D2 forte - Frasco con gotero
+    "vitamina d2 forte (gotas)": "https://cdn-icons-png.flaticon.com/512/3774/3774239.png",
+    
+    # 💊 Vitamina B - Cápsula de medicina
+    "vitamina b (gotas)": "https://cdn-icons-png.flaticon.com/512/2966/2966327.png",
+    
+    # 🧴 Fumarato ferroso - Botella de suspensión
+    "fumarato ferroso en suspensión": "https://cdn-icons-png.flaticon.com/512/2785/2785629.png",
 }
 
-DEFAULT_IMG = "https://cdn-icons-png.flaticon.com/512/2966/2966334.png"  # Frasco genérico
+# Imagen por defecto si no hay coincidencia
+DEFAULT_IMG = "https://cdn-icons-png.flaticon.com/512/2966/2966334.png"
 
 
 # ==============================
@@ -395,6 +435,9 @@ html = f"""
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
 
 <style>

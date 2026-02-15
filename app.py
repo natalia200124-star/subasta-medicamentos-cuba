@@ -16,7 +16,6 @@ st.set_page_config(
 # ==============================
 # AUTO-REFRESH CADA 5 SEGUNDOS
 # ==============================
-# Esto actualiza automáticamente la página cada 5 segundos
 st_autorefresh(interval=5000, key="datarefresh")
 
 
@@ -270,18 +269,18 @@ COLORES_MEDICAMENTOS = [
 
 
 # ==============================
-# ✅ IMÁGENES CORRECTAS DE MEDICAMENTOS - VERIFICADAS
+# ✅ IMÁGENES ANIMADAS DE MEDICAMENTOS - SOLO MEDICAMENTOS
 # ==============================
 IMG_MAP = {
-    "multivitaminas (gotas)": "https://cdn-icons-png.flaticon.com/512/2966/2966334.png",  # Frasco medicina con etiqueta
-    "vitaminas c (gotas)": "https://cdn-icons-png.flaticon.com/512/3209/3209231.png",  # Cápsula píldora
-    "vitamina a y d2 (gotas)": "https://cdn-icons-png.flaticon.com/512/3643/3643913.png",  # Frasco de jarabe líquido
-    "vitamina d2 forte (gotas)": "https://cdn-icons-png.flaticon.com/512/2785/2785421.png",  # Gotero medicinal
-    "vitamina b (gotas)": "https://cdn-icons-png.flaticon.com/512/2785/2785457.png",  # Blister de pastillas
-    "fumarato ferroso en suspensión": "https://cdn-icons-png.flaticon.com/512/3774/3774299.png",  # Botella suspensión
+    "multivitaminas (gotas)": "https://cdn-icons-png.flaticon.com/512/4320/4320371.png",  # Frasco de medicina con etiqueta
+    "vitaminas c (gotas)": "https://cdn-icons-png.flaticon.com/512/2913/2913133.png",  # Tabletas/pastillas
+    "vitamina a y d2 (gotas)": "https://cdn-icons-png.flaticon.com/512/3094/3094840.png",  # Jarabe líquido
+    "vitamina d2 forte (gotas)": "https://cdn-icons-png.flaticon.com/512/2785/2785629.png",  # Botella de suspensión
+    "vitamina b (gotas)": "https://cdn-icons-png.flaticon.com/512/2966/2966327.png",  # Cápsula de medicina
+    "fumarato ferroso en suspensión": "https://cdn-icons-png.flaticon.com/512/3774/3774239.png",  # Frasco con gotero
 }
 
-DEFAULT_IMG = "https://cdn-icons-png.flaticon.com/512/2966/2966327.png"  # Medicamento cápsula genérico
+DEFAULT_IMG = "https://cdn-icons-png.flaticon.com/512/2966/2966334.png"  # Frasco genérico
 
 
 # ==============================
@@ -303,14 +302,8 @@ else:
     mas_av_nombre = "N/A"
     mas_av_pct = 0
 
-# ✅ CONFETI INTELIGENTE - Solo si algún medicamento está entre 90-100%
-medicamentos_cerca_meta = []
-for _, r in avance.iterrows():
-    pct = float(r["porcentaje"])
-    if 90 <= pct <= 100:
-        medicamentos_cerca_meta.append(r["medicamento"])
-
-mostrar_confeti = len(medicamentos_cerca_meta) > 0
+# ✅ CONFETI INTELIGENTE - Solo si algún medicamento está >= 95%
+hay_confeti = any(float(r["porcentaje"]) >= 95 for _, r in avance.iterrows())
 
 
 # ==============================
@@ -1148,29 +1141,23 @@ body::after {{
 </div>
 
 <script>
-    // ✅ CONFETI INTELIGENTE - Solo si hay medicamentos entre 90-100%
-    const mostrarConfeti = {str(mostrar_confeti).lower()};
+    // ✅ CONFETI CORREGIDO - Se dispara cuando algún medicamento está >= 95%
+    const hayConfeti = {str(hay_confeti).lower()};
     
-    // Usar sessionStorage para evitar repetir confeti en la misma sesión
-    const yaSeDisparo = sessionStorage.getItem('confeti_disparado');
-    
-    if(mostrarConfeti && !yaSeDisparo) {{
-        // Marcar que ya se disparó en esta sesión
-        sessionStorage.setItem('confeti_disparado', 'true');
-        
-        // Celebración cuando se alcanza meta
+    if(hayConfeti) {{
+        // Celebración
         confetti({{
-            particleCount: 300,
-            spread: 160,
+            particleCount: 200,
+            spread: 120,
             origin: {{ y: 0.6 }},
             colors: ['#00D4FF', '#FF3D71', '#00FF9F', '#B24BF3', '#FFB800']
         }});
         
         setTimeout(() => {{
             confetti({{
-                particleCount: 200,
+                particleCount: 150,
                 angle: 60,
-                spread: 100,
+                spread: 80,
                 origin: {{ x: 0 }},
                 colors: ['#00D4FF', '#00FF9F']
             }});
@@ -1178,13 +1165,13 @@ body::after {{
         
         setTimeout(() => {{
             confetti({{
-                particleCount: 200,
+                particleCount: 150,
                 angle: 120,
-                spread: 100,
+                spread: 80,
                 origin: {{ x: 1 }},
                 colors: ['#FF3D71', '#B24BF3']
             }});
-        }}, 400);
+        }}, 500);
     }}
 </script>
 

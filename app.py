@@ -3,7 +3,6 @@ import pandas as pd
 from datetime import datetime
 import streamlit.components.v1 as components
 import time
-import hashlib
 
 # ==============================
 # CONFIGURACIÓN PRINCIPAL
@@ -22,57 +21,13 @@ CSV_METAS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSQ-JoPi55tEnwRnP_S
 
 
 # ==============================
-# INICIALIZACIÓN SESSION STATE
+# FUNCIONES
 # ==============================
-if "ultima_actualizacion" not in st.session_state:
-    st.session_state.ultima_actualizacion = None
-if "donaciones_cache" not in st.session_state:
-    st.session_state.donaciones_cache = None
-if "metas_cache" not in st.session_state:
-    st.session_state.metas_cache = None
-if "hash_datos" not in st.session_state:
-    st.session_state.hash_datos = None
-
-
-# ==============================
-# FUNCIONES OPTIMIZADAS
-# ==============================
-@st.cache_data(ttl=5)  # ✅ Cache de 5 segundos para verificación rápida
-def verificar_cambios():
-    """Verifica si hay cambios en los datos sin cargar todo"""
-    try:
-        # Solo leer primeras y últimas filas para verificar
-        donaciones_preview = pd.read_csv(CSV_DONACIONES, nrows=1)
-        donaciones_count = pd.read_csv(CSV_DONACIONES).shape[0]
-        
-        # Crear hash simple de verificación
-        hash_actual = hashlib.md5(f"{donaciones_count}".encode()).hexdigest()
-        return hash_actual, donaciones_count
-    except:
-        return None, 0
-
-
-def cargar_datos_inteligente():
-    """Carga datos solo si hay cambios detectados"""
-    hash_actual, count_actual = verificar_cambios()
-    
-    # Si no hay cambios, usar cache
-    if (st.session_state.hash_datos == hash_actual and 
-        st.session_state.donaciones_cache is not None and 
-        st.session_state.metas_cache is not None):
-        return st.session_state.donaciones_cache, st.session_state.metas_cache, False
-    
-    # Hay cambios, recargar datos
+def cargar_datos():
+    """Carga datos SIN cache - actualización inmediata garantizada"""
     donaciones = pd.read_csv(CSV_DONACIONES)
     metas = pd.read_csv(CSV_METAS)
-    
-    # Actualizar cache
-    st.session_state.donaciones_cache = donaciones.copy()
-    st.session_state.metas_cache = metas.copy()
-    st.session_state.hash_datos = hash_actual
-    st.session_state.ultima_actualizacion = datetime.now()
-    
-    return donaciones, metas, True
+    return donaciones, metas
 
 
 def formatear_numero(x):
@@ -147,14 +102,10 @@ def termometro_ultra_moderno_svg(pct, color="#00d4ff"):
 
 
 # ==============================
-# CARGA DE DATOS INTELIGENTE
+# CARGA DE DATOS DIRECTA
 # ==============================
 try:
-    donaciones, metas, hubo_cambios = cargar_datos_inteligente()
-    
-    # Mostrar indicador de actualización si hubo cambios
-    if hubo_cambios:
-        st.toast("✅ Datos actualizados", icon="✅")
+    donaciones, metas = cargar_datos()
 except Exception as e:
     st.error(f"❌ Error al cargar datos: {str(e)}")
     st.stop()
@@ -312,18 +263,21 @@ COLORES_MEDICAMENTOS = [
 
 
 # ==============================
-# ✅ NUEVAS IMÁGENES ILUSTRADAS DE MEDICAMENTOS
+# ✅ IMÁGENES DE MEDICAMENTOS REALES - SIN JERINGAS NI INSTRUMENTAL
 # ==============================
 IMG_MAP = {
-    "multivitaminas (gotas)": "https://cdn-icons-png.flaticon.com/512/2785/2785482.png",  # Frasco de pastillas
-    "vitaminas c (gotas)": "https://cdn-icons-png.flaticon.com/512/3588/3588592.png",  # Jeringa médica
-    "vitamina a y d2 (gotas)": "https://cdn-icons-png.flaticon.com/512/2785/2785490.png",  # Caja de medicina
-    "vitamina d2 forte (gotas)": "https://cdn-icons-png.flaticon.com/512/3588/3588435.png",  # Ampolla/vial
-    "vitamina b (gotas)": "https://cdn-icons-png.flaticon.com/512/2785/2785528.png",  # Blister de pastillas
-    "fumarato ferroso en suspensión": "https://cdn-icons-png.flaticon.com/512/3588/3588570.png",  # Frasco de jarabe
+    "multivitaminas (gotas)": "https://cdn-icons-png.flaticon.com/512/3774/3774239.png",  # Frasco con gotero
+    "vitaminas c (gotas)": "https://cdn-icons-png.flaticon.com/512/2966/2966327.png",  # Cápsula de vitamina
+    "vitamina a y d2 (gotas)": "https://cdn-icons-png.flaticon.com/512/3209/3209265.png",  # Jarabe/frasco líquido
+    "vitamina d2 forte (gotas)": "https://cdn-icons-png.flaticon.com/512/3643/3643747.png",  # Gotero/gotas
+    "vitamina b (gotas)": "https://cdn-icons-png.flaticon.com/512/10473/10473325.png",  # Pastillas/tabletas
+    "fumarato ferroso en suspensión": "https://cdn-icons-png.flaticon.com/512/2785/2785629.png",  # Botella de medicina líquida
 }
 
-DEFAULT_IMG = "https://cdn-icons-png.flaticon.com/512/2785/2785514.png"  # Medicamento genérico
+DEFAULT_IMG = "https://cdn-icons-png.flaticon.com/512/3774/3774299.png"  # Medicamento genérico
+
+# ✅ Imagen especial del corazón (mantener la original o usar una bonita)
+CORAZON_IMG = "https://cdn-icons-png.flaticon.com/512/833/833472.png"  # Corazón ilustrado bonito
 
 
 # ==============================
@@ -750,7 +704,7 @@ body::after {{
 /* ==================== GRID 3x2 MEDICAMENTOS ==================== */
 .grid {{
     display: grid;
-    grid-template-columns: repeat(3, 1fr);  /* ✅ SIEMPRE 3 COLUMNAS */
+    grid-template-columns: repeat(3, 1fr);
     gap: 24px;
 }}
 
@@ -1215,10 +1169,10 @@ body::after {{
         }}, 400);
     }}
 
-    // ✅ AUTO-REFRESH OPTIMIZADO - RECARGA CADA 8 SEGUNDOS
+    // ✅ ACTUALIZACIÓN EN TIEMPO REAL - RECARGA CADA 3 SEGUNDOS
     setTimeout(function() {{
         location.reload(true);
-    }}, 8000);
+    }}, 3000);
 </script>
 
 </body>
@@ -1227,6 +1181,6 @@ body::after {{
 
 components.html(html, height=1400, scrolling=True)
 
-# ✅ ACTUALIZACIÓN INTELIGENTE - Solo recargar si hay cambios
-time.sleep(8)
+# ✅ ACTUALIZACIÓN DIRECTA - Recarga cada 3 segundos
+time.sleep(3)
 st.rerun()

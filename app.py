@@ -21,27 +21,13 @@ CSV_METAS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSQ-JoPi55tEnwRnP_S
 
 
 # ==============================
-# AUTO-REFRESH FORZADO
-# ==============================
-# Agregar timestamp único para forzar recarga
-if 'last_update' not in st.session_state:
-    st.session_state.last_update = time.time()
-
-# Forzar recarga cada 5 segundos
-current_time = time.time()
-if current_time - st.session_state.last_update > 5:
-    st.session_state.last_update = current_time
-    st.rerun()
-
-
-# ==============================
 # FUNCIONES
 # ==============================
+@st.cache_data(ttl=0)  # ✅ DESACTIVAR CACHE PARA ACTUALIZACIÓN INMEDIATA
 def cargar_datos():
-    """Carga datos SIN CACHE - timestamp único para evitar cache"""
-    timestamp = int(time.time())
-    donaciones = pd.read_csv(f"{CSV_DONACIONES}&t={timestamp}")
-    metas = pd.read_csv(f"{CSV_METAS}&t={timestamp}")
+    """Carga datos SIN cache para actualización en tiempo real"""
+    donaciones = pd.read_csv(CSV_DONACIONES)
+    metas = pd.read_csv(CSV_METAS)
     return donaciones, metas
 
 
@@ -53,46 +39,65 @@ def formatear_numero(x):
         return "0"
 
 
-def termometro_moderno_svg(pct, color="#00d4ff"):
-    """Termómetro compacto con diseño moderno"""
+def termometro_ultra_moderno_svg(pct, color="#00d4ff"):
+    """Termómetro con diseño ultra moderno y efectos neón"""
     pct = max(0, min(float(pct), 100))
-    altura = int(100 * (pct / 100))
-    y = 130 - altura
+    altura = int(120 * (pct / 100))
+    y = 150 - altura
 
     return f"""
-    <svg viewBox="0 0 110 180">
+    <svg viewBox="0 0 130 210">
         <defs>
             <linearGradient id="bulb{hash(color)}" x1="0%" y1="0%" x2="0%" y2="100%">
                 <stop offset="0%" style="stop-color:{color};stop-opacity:1" />
-                <stop offset="100%" style="stop-color:{color};stop-opacity:0.7" />
+                <stop offset="50%" style="stop-color:{color};stop-opacity:0.8" />
+                <stop offset="100%" style="stop-color:{color};stop-opacity:0.6" />
             </linearGradient>
             <linearGradient id="tube{hash(color)}" x1="0%" y1="0%" x2="0%" y2="100%">
                 <stop offset="0%" style="stop-color:{color};stop-opacity:1" />
                 <stop offset="100%" style="stop-color:{color};stop-opacity:0.7" />
             </linearGradient>
             <filter id="neon{hash(color)}">
-                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
                 <feMerge>
+                    <feMergeNode in="coloredBlur"/>
                     <feMergeNode in="coloredBlur"/>
                     <feMergeNode in="SourceGraphic"/>
                 </feMerge>
             </filter>
         </defs>
         
-        <circle cx="55" cy="150" r="18" fill="rgba(10,15,30,0.5)" stroke="{color}" stroke-width="2" opacity="0.5"/>
-        <rect x="45" y="30" width="20" height="120" rx="10" fill="rgba(10,15,30,0.5)" stroke="{color}" stroke-width="2" opacity="0.5"/>
+        <!-- Glow externo -->
+        <circle cx="65" cy="170" r="26" fill="{color}" opacity="0.15" filter="blur(8px)"/>
+        
+        <!-- Bulbo base -->
+        <circle cx="65" cy="170" r="22" fill="rgba(10,15,30,0.5)" stroke="{color}" stroke-width="2.5" opacity="0.5"/>
+        
+        <!-- Tubo base -->
+        <rect x="52" y="35" width="26" height="135" rx="13" fill="rgba(10,15,30,0.5)" stroke="{color}" stroke-width="2.5" opacity="0.5"/>
 
         <clipPath id="clipT{hash(color)}">
-            <rect x="45" y="30" width="20" height="120" rx="10"/>
+            <rect x="52" y="35" width="26" height="135" rx="13"/>
         </clipPath>
 
-        <rect x="45" y="{y}" width="20" height="{altura}" fill="url(#tube{hash(color)})" 
+        <!-- Relleno animado -->
+        <rect x="52" y="{y}" width="26" height="{altura}" fill="url(#tube{hash(color)})" 
               clip-path="url(#clipT{hash(color)})" filter="url(#neon{hash(color)})"/>
 
-        <circle cx="55" cy="150" r="14" fill="url(#bulb{hash(color)})" filter="url(#neon{hash(color)})"/>
-        <circle cx="55" cy="150" r="8" fill="white" opacity="0.3"/>
+        <!-- Bulbo lleno -->
+        <circle cx="65" cy="170" r="18" fill="url(#bulb{hash(color)})" filter="url(#neon{hash(color)})"/>
         
-        <text x="55" y="175" text-anchor="middle" fill="{color}" font-size="12" font-weight="900">{pct:.0f}%</text>
+        <!-- Brillo interno -->
+        <circle cx="65" cy="170" r="10" fill="white" opacity="0.3"/>
+        
+        <!-- Marcas -->
+        <line x1="79" y1="50" x2="88" y2="50" stroke="{color}" stroke-width="2" opacity="0.6"/>
+        <line x1="79" y1="80" x2="88" y2="80" stroke="{color}" stroke-width="2" opacity="0.6"/>
+        <line x1="79" y1="110" x2="88" y2="110" stroke="{color}" stroke-width="2" opacity="0.6"/>
+        <line x1="79" y1="140" x2="88" y2="140" stroke="{color}" stroke-width="2" opacity="0.6"/>
+        
+        <!-- Texto de porcentaje -->
+        <text x="65" y="200" text-anchor="middle" fill="{color}" font-size="14" font-weight="900" opacity="0.9">{pct:.0f}%</text>
     </svg>
     """
 
@@ -106,6 +111,7 @@ except Exception as e:
     st.error(f"❌ Error al cargar datos: {str(e)}")
     st.stop()
 
+# Normalizar nombres de columnas
 donaciones.columns = [c.strip() for c in donaciones.columns]
 metas.columns = [c.strip().lower() for c in metas.columns]
 
@@ -134,27 +140,30 @@ lista_medicamentos = metas["medicamento"].tolist()
 
 
 # ==============================
-# NORMALIZACIÓN DONACIONES - PRIVACIDAD
+# NORMALIZACIÓN DONACIONES - PRIVACIDAD TOTAL
 # ==============================
 if "Timestamp" in donaciones.columns:
     donaciones.rename(columns={"Timestamp": "fecha_hora"}, inplace=True)
 elif "timestamp" in donaciones.columns:
     donaciones.rename(columns={"timestamp": "fecha_hora"}, inplace=True)
 
+# ✅ CRÍTICO: Solo usar "Contacto (opcional)", NUNCA "Donante"
 if "Contacto (opcional)" in donaciones.columns:
     donaciones["donante_publico"] = donaciones["Contacto (opcional)"].fillna("").astype(str).str.strip()
 else:
     donaciones["donante_publico"] = ""
 
+# Convertir vacíos a "Donante anónimo"
 donaciones.loc[donaciones["donante_publico"] == "", "donante_publico"] = "Donante anónimo"
 donaciones.loc[donaciones["donante_publico"].str.lower() == "nan", "donante_publico"] = "Donante anónimo"
 
+# Eliminar la columna "Donante" para evitar confusiones
 if "Donante" in donaciones.columns:
     donaciones = donaciones.drop(columns=["Donante"])
 
 
 # ==============================
-# CREAR COLUMNAS MEDICAMENTOS
+# CREAR COLUMNAS MEDICAMENTOS SI NO EXISTEN
 # ==============================
 for med in lista_medicamentos:
     if med not in donaciones.columns:
@@ -165,7 +174,7 @@ for med in lista_medicamentos:
 
 
 # ==============================
-# ÚLTIMA DONACIÓN
+# ÚLTIMA DONACIÓN - SOLO CONTACTO PÚBLICO
 # ==============================
 ultimo_donante = "Donante anónimo"
 ultima_hora = ""
@@ -180,6 +189,7 @@ if "fecha_hora" in donaciones.columns:
             donaciones_validas = donaciones_validas.sort_values("fecha_hora", ascending=False)
             fila_ultima = donaciones_validas.iloc[0]
             
+            # ✅ USAR SOLO CONTACTO PÚBLICO
             ultimo_donante = fila_ultima["donante_publico"]
             
             suma_medicamentos = 0
@@ -193,7 +203,7 @@ if "fecha_hora" in donaciones.columns:
 
 
 # ==============================
-# CALCULOS
+# DONACIONES EN FORMATO LARGO
 # ==============================
 donaciones_largo = donaciones.melt(
     id_vars=[c for c in donaciones.columns if c not in lista_medicamentos],
@@ -204,13 +214,24 @@ donaciones_largo = donaciones.melt(
 
 donaciones_largo = donaciones_largo[donaciones_largo["cantidad"] > 0]
 
+
+# ==============================
+# CALCULOS PRINCIPALES
+# ==============================
 donado_por_med = donaciones_largo.groupby("medicamento", as_index=False)["cantidad"].sum()
 
 metas_temp = metas.copy()
 metas_temp["medicamento_lower"] = metas_temp["medicamento"].str.lower()
 
+# Crear diccionario para mapear nombres
+map_medicamentos = {}
+for med in lista_medicamentos:
+    map_medicamentos[med.lower()] = med
+
+# Normalizar nombres en donado_por_med
 donado_por_med["medicamento_lower"] = donado_por_med["medicamento"].str.lower()
 
+# Merge
 avance = metas_temp.merge(donado_por_med, on="medicamento_lower", how="left", suffixes=("", "_don"))
 avance["cantidad"] = avance["cantidad"].fillna(0)
 
@@ -230,31 +251,31 @@ fecha_hoy = datetime.now().strftime("%d de %B de %Y")
 
 
 # ==============================
-# COLORES
+# PALETA DE COLORES PREMIUM HEALTHTECH
 # ==============================
 COLORES_MEDICAMENTOS = [
-    "#00D4FF",  # Cyan
-    "#FF3D71",  # Rosa
-    "#00FF9F",  # Verde
-    "#FFB800",  # Dorado
-    "#B24BF3",  # Púrpura
-    "#FF6B35",  # Naranja
+    "#00D4FF",  # Cyan eléctrico
+    "#FF3D71",  # Rosa neón
+    "#00FF9F",  # Verde esmeralda
+    "#FFB800",  # Dorado brillante
+    "#B24BF3",  # Púrpura vibrante
+    "#FF6B35",  # Naranja cálido
 ]
 
 
 # ==============================
-# IMÁGENES REALISTAS DE MEDICAMENTOS
+# IMÁGENES REALES DE MEDICAMENTOS - CORREGIDAS
 # ==============================
 IMG_MAP = {
-    "multivitaminas (gotas)": "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&h=400&fit=crop",  # ✅ Frasco ámbar gotero
-    "vitaminas c (gotas)": "https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=400&h=400&fit=crop",  # ✅ Píldoras naranjas
-    "vitamina a y d2 (gotas)": "https://images.unsplash.com/photo-1550572017-4814c6b371ae?w=400&h=400&fit=crop",  # ✅ Botella medicina azul
-    "vitamina d2 forte (gotas)": "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?w=400&h=400&fit=crop",  # ✅ Frasco ámbar medicina
-    "vitamina b (gotas)": "https://images.unsplash.com/photo-1631549916768-4119b2e5f926?w=400&h=400&fit=crop",  # ✅ Cápsulas amarillas
-    "fumarato ferroso en suspensión": "https://images.unsplash.com/photo-1603891325855-9fca83f3e42b?w=400&h=400&fit=crop",  # ✅ Jarabe rojo
+    "multivitaminas (gotas)": "https://cdn-icons-png.flaticon.com/512/2913/2913182.png",  # Frasco gotero
+    "vitaminas c (gotas)": "https://cdn-icons-png.flaticon.com/512/3643/3643913.png",  # Píldora/cápsula
+    "vitamina a y d2 (gotas)": "https://cdn-icons-png.flaticon.com/512/2966/2966334.png",  # Botella médica
+    "vitamina d2 forte (gotas)": "https://cdn-icons-png.flaticon.com/512/3774/3774299.png",  # Frasco medicina
+    "vitamina b (gotas)": "https://cdn-icons-png.flaticon.com/512/2913/2913133.png",  # Tabletas
+    "fumarato ferroso en suspensión": "https://cdn-icons-png.flaticon.com/512/3094/3094840.png",  # Jarabe
 }
 
-DEFAULT_IMG = "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&h=400&fit=crop"
+DEFAULT_IMG = "https://cdn-icons-png.flaticon.com/512/2913/2913155.png"  # Cápsula médica
 
 
 # ==============================
@@ -280,7 +301,7 @@ hay_meta_completa = (avance["porcentaje"] >= 100).any() if len(avance) > 0 else 
 
 
 # ==============================
-# TARJETAS COMPACTAS
+# TARJETAS CON DISEÑO ULTRA PREMIUM
 # ==============================
 cards_html = ""
 
@@ -298,7 +319,7 @@ for _, r in avance.iterrows():
     color_main = COLORES_MEDICAMENTOS[idx % len(COLORES_MEDICAMENTOS)]
 
     img_url = IMG_MAP.get(nombre_lower, DEFAULT_IMG)
-    thermo = termometro_moderno_svg(pct, color=color_main)
+    thermo = termometro_ultra_moderno_svg(pct, color=color_main)
 
     cards_html += f"""
     <div class="med-card">
@@ -316,13 +337,16 @@ for _, r in avance.iterrows():
                 <div class="image-glow" style="background: {color_main}30;"></div>
                 
                 <div class="img-wrapper">
+                    <!-- Imagen base gris -->
                     <img src="{img_url}" class="img-base"/>
                     
+                    <!-- Contenedor de llenado -->
                     <div class="img-fill-container" style="height: {pct_bar}%;">
                         <img src="{img_url}" class="img-colored" 
-                             style="filter: drop-shadow(0 0 10px {color_main}) brightness(1.2);"/>
+                             style="filter: drop-shadow(0 0 12px {color_main}) brightness(1.2);"/>
                     </div>
                     
+                    <!-- Efecto de brillo -->
                     <div class="img-shimmer"></div>
                 </div>
             </div>
@@ -357,7 +381,7 @@ for _, r in avance.iterrows():
 
 
 # ==============================
-# HTML CON META REFRESH
+# HTML ULTRA PREMIUM - DISEÑO REVOLUCIONARIO
 # ==============================
 html = f"""
 <!DOCTYPE html>
@@ -365,7 +389,6 @@ html = f"""
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="refresh" content="5">
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
 
 <style>
@@ -386,6 +409,7 @@ body {{
     position: relative;
 }}
 
+/* ==================== FONDO ANIMADO ==================== */
 body::before {{
     content: '';
     position: fixed;
@@ -407,6 +431,7 @@ body::before {{
     50% {{ opacity: 0.8; }}
 }}
 
+/* Partículas flotantes */
 body::after {{
     content: '';
     position: fixed;
@@ -417,9 +442,10 @@ body::after {{
     background-image: 
         radial-gradient(2px 2px at 20% 30%, rgba(255,255,255,0.15), transparent),
         radial-gradient(2px 2px at 60% 70%, rgba(0,212,255,0.2), transparent),
-        radial-gradient(1px 1px at 50% 50%, rgba(255,61,113,0.2), transparent);
-    background-size: 200px 200px, 300px 300px, 250px 250px;
-    background-position: 0 0, 40px 60px, 130px 270px;
+        radial-gradient(1px 1px at 50% 50%, rgba(255,61,113,0.2), transparent),
+        radial-gradient(1px 1px at 80% 10%, rgba(0,255,159,0.15), transparent);
+    background-size: 200px 200px, 300px 300px, 250px 250px, 350px 350px;
+    background-position: 0 0, 40px 60px, 130px 270px, 70px 100px;
     animation: float 20s linear infinite;
     pointer-events: none;
     z-index: 0;
@@ -434,23 +460,26 @@ body::after {{
 .main {{
     max-width: 1920px;
     margin: 0 auto;
-    padding: 24px;
+    padding: 30px;
     position: relative;
     z-index: 1;
 }}
 
+/* ==================== HEADER PREMIUM ==================== */
 .header {{
     background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(8, 15, 30, 0.95) 100%);
     backdrop-filter: blur(30px) saturate(180%);
+    -webkit-backdrop-filter: blur(30px) saturate(180%);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 24px;
-    padding: 24px 32px;
+    border-radius: 28px;
+    padding: 32px 40px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 24px;
+    margin-bottom: 30px;
     box-shadow: 
         0 20px 60px rgba(0, 0, 0, 0.5),
+        0 0 80px rgba(0, 212, 255, 0.1),
         inset 0 1px 0 rgba(255, 255, 255, 0.1);
     position: relative;
     overflow: hidden;
@@ -475,10 +504,10 @@ body::after {{
 .logo {{
     background: linear-gradient(135deg, #00D4FF 0%, #0091FF 100%);
     color: #060A12;
-    padding: 12px 18px;
-    border-radius: 16px;
+    padding: 16px 22px;
+    border-radius: 18px;
     font-weight: 900;
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.4;
     text-align: center;
     letter-spacing: 0.8px;
@@ -489,59 +518,179 @@ body::after {{
 }}
 
 .title {{
-    font-size: 32px;
+    font-size: 38px;
     font-weight: 900;
     background: linear-gradient(135deg, #FFFFFF 0%, #00D4FF 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    background-clip: text;
     letter-spacing: -1px;
+    text-shadow: 0 0 40px rgba(0, 212, 255, 0.3);
 }}
 
 .subtitle {{
-    font-size: 14px;
+    font-size: 15px;
     color: rgba(255, 255, 255, 0.5);
-    margin-top: 4px;
+    margin-top: 6px;
     font-weight: 600;
+    letter-spacing: 0.5px;
 }}
 
 .header-badge {{
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 800;
     color: #00FF9F;
-    padding: 12px 24px;
+    padding: 14px 28px;
     background: rgba(0, 255, 159, 0.12);
     border: 2px solid rgba(0, 255, 159, 0.3);
-    border-radius: 14px;
-    box-shadow: 0 0 30px rgba(0, 255, 159, 0.3);
+    border-radius: 16px;
+    box-shadow: 
+        0 0 30px rgba(0, 255, 159, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
     text-transform: uppercase;
     letter-spacing: 1px;
 }}
 
+/* ==================== SUMMARY CARDS ==================== */
 .summary {{
     display: grid;
     grid-template-columns: 1fr 1fr 2fr;
-    gap: 16px;
-    margin-bottom: 24px;
+    gap: 20px;
+    margin-bottom: 30px;
 }}
 
 .summary-card {{
     background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(8, 15, 30, 0.9) 100%);
     backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 20px;
-    padding: 20px;
+    border-radius: 24px;
+    padding: 28px;
     box-shadow: 
         0 15px 50px rgba(0, 0, 0, 0.4),
         inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    transition: all 0.4s ease;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}}
+
+.summary-card::before {{
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(0, 212, 255, 0.08) 0%, transparent 70%);
+    pointer-events: none;
 }}
 
 .summary-card:hover {{
     transform: translateY(-4px);
     border-color: rgba(0, 212, 255, 0.3);
+    box-shadow: 
+        0 25px 70px rgba(0, 0, 0, 0.5),
+        0 0 50px rgba(0, 212, 255, 0.2);
 }}
 
 .summary-label {{
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 12px;
+}}
+
+.summary-number {{
+    font-size: 42px;
+    font-weight: 900;
+    background: linear-gradient(135deg, #FFFFFF 0%, #00D4FF 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.1;
+}}
+
+.global-progress {{
+    margin-top: 16px;
+}}
+
+.progress-track {{
+    height: 28px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+    position: relative;
+}}
+
+.progress-track::before {{
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 50%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, transparent 100%);
+    pointer-events: none;
+}}
+
+.progress-active {{
+    height: 100%;
+    background: linear-gradient(90deg, #00D4FF 0%, #00FF9F 100%);
+    width: {max(0, min(porcentaje_total, 100))}%;
+    transition: width 2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 
+        0 0 30px rgba(0, 212, 255, 0.6),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    position: relative;
+}}
+
+.progress-active::after {{
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 50%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.4) 0%, transparent 100%);
+}}
+
+.progress-percent {{
+    text-align: right;
+    font-size: 18px;
+    font-weight: 900;
+    margin-top: 10px;
+    color: #00FF9F;
+    text-shadow: 0 0 20px rgba(0, 255, 159, 0.5);
+}}
+
+/* ==================== PANEL ==================== */
+.panel {{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 30px;
+}}
+
+.panel-card {{
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(8, 15, 30, 0.9) 100%);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 24px;
+    padding: 24px;
+    box-shadow: 
+        0 15px 50px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    transition: all 0.3s ease;
+}}
+
+.panel-card:hover {{
+    transform: translateY(-3px);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}}
+
+.panel-label {{
     font-size: 11px;
     color: rgba(255, 255, 255, 0.5);
     font-weight: 700;
@@ -550,158 +699,112 @@ body::after {{
     margin-bottom: 8px;
 }}
 
-.summary-number {{
-    font-size: 36px;
-    font-weight: 900;
-    background: linear-gradient(135deg, #FFFFFF 0%, #00D4FF 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    line-height: 1.1;
-}}
-
-.global-progress {{
-    margin-top: 12px;
-}}
-
-.progress-track {{
-    height: 24px;
-    border-radius: 16px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    overflow: hidden;
-    position: relative;
-}}
-
-.progress-active {{
-    height: 100%;
-    background: linear-gradient(90deg, #00D4FF 0%, #00FF9F 100%);
-    width: {max(0, min(porcentaje_total, 100))}%;
-    transition: width 2s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 0 30px rgba(0, 212, 255, 0.6);
-}}
-
-.progress-percent {{
-    text-align: right;
-    font-size: 16px;
-    font-weight: 900;
-    margin-top: 8px;
-    color: #00FF9F;
-}}
-
-.panel {{
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    margin-bottom: 24px;
-}}
-
-.panel-card {{
-    background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(8, 15, 30, 0.9) 100%);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 20px;
-    padding: 20px;
-    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.4);
-    transition: all 0.3s ease;
-}}
-
-.panel-card:hover {{
-    transform: translateY(-3px);
-}}
-
-.panel-label {{
-    font-size: 10px;
-    color: rgba(255, 255, 255, 0.5);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    margin-bottom: 6px;
-}}
-
 .panel-title {{
-    font-size: 20px;
+    font-size: 24px;
     font-weight: 900;
-    margin-bottom: 8px;
+    margin-bottom: 12px;
 }}
 
 .panel-info {{
-    font-size: 13px;
+    font-size: 14px;
     color: rgba(255, 255, 255, 0.7);
-    margin-top: 6px;
+    margin-top: 8px;
     font-weight: 600;
 }}
 
+/* ==================== GRID 3x2 MEDICAMENTOS ==================== */
 .grid {{
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 18px;
+    grid-template-columns: repeat(3, 1fr);  /* ✅ SIEMPRE 3 COLUMNAS */
+    gap: 24px;
 }}
 
+/* ==================== TARJETAS MEDICAMENTOS ULTRA PREMIUM ==================== */
 .med-card {{
     background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(8, 15, 30, 0.95) 100%);
-    backdrop-filter: blur(30px);
+    backdrop-filter: blur(30px) saturate(180%);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 22px;
-    padding: 20px;
-    min-height: 420px;
+    border-radius: 28px;
+    padding: 28px;
+    min-height: 580px;
     display: flex;
     flex-direction: column;
     box-shadow: 
-        0 15px 50px rgba(0, 0, 0, 0.5),
+        0 20px 60px rgba(0, 0, 0, 0.5),
         inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    transition: all 0.4s ease;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     overflow: hidden;
 }}
 
+.med-card::before {{
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.03) 0%, transparent 70%);
+    pointer-events: none;
+    transition: opacity 0.5s;
+}}
+
 .med-card:hover {{
-    transform: translateY(-8px) scale(1.01);
-    border-color: rgba(0, 212, 255, 0.4);
+    transform: translateY(-12px) scale(1.02);
+    border-color: rgba(0, 212, 255, 0.5);
     box-shadow: 
-        0 25px 70px rgba(0, 0, 0, 0.6),
-        0 0 50px rgba(0, 212, 255, 0.3);
+        0 30px 80px rgba(0, 0, 0, 0.6),
+        0 0 60px rgba(0, 212, 255, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}}
+
+.med-card:hover::before {{
+    opacity: 1.8;
 }}
 
 .med-header {{
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 16px;
-    gap: 10px;
+    margin-bottom: 24px;
+    gap: 12px;
 }}
 
 .med-title {{
-    font-size: 15px;
+    font-size: 18px;
     font-weight: 900;
     background: linear-gradient(135deg, #FFFFFF 0%, #C5D9FF 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    background-clip: text;
     flex: 1;
     line-height: 1.3;
 }}
 
 .med-badge {{
-    padding: 6px 12px;
-    border-radius: 10px;
-    font-size: 12px;
+    padding: 8px 16px;
+    border-radius: 12px;
+    font-size: 14px;
     font-weight: 900;
     text-align: center;
-    min-width: 60px;
+    min-width: 70px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }}
 
 .med-body {{
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 16px;
-    margin: 16px 0;
+    gap: 24px;
+    margin: 24px 0;
     flex: 1;
 }}
 
+/* ==================== IMÁGENES MEJORADAS ==================== */
 .med-image-container {{
-    width: 140px;
-    height: 170px;
-    border-radius: 20px;
+    width: 180px;
+    height: 220px;
+    border-radius: 24px;
     position: relative;
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
     border: 1px solid rgba(255, 255, 255, 0.08);
@@ -709,41 +812,42 @@ body::after {{
     justify-content: center;
     align-items: center;
     overflow: hidden;
+    box-shadow: 
+        inset 0 2px 20px rgba(0, 0, 0, 0.3),
+        0 8px 24px rgba(0, 0, 0, 0.2);
 }}
 
 .image-glow {{
     position: absolute;
     width: 100%;
     height: 100%;
-    border-radius: 20px;
-    filter: blur(25px);
+    border-radius: 24px;
+    filter: blur(30px);
     opacity: 0.4;
     z-index: 0;
 }}
 
 .img-wrapper {{
     position: relative;
-    width: 110px;
-    height: 110px;
+    width: 140px;
+    height: 140px;
     z-index: 1;
 }}
 
 .img-base {{
     position: absolute;
-    width: 110px;
-    height: 110px;
+    width: 140px;
+    height: 140px;
     filter: grayscale(100%) brightness(0.3);
     opacity: 0.4;
     z-index: 1;
-    object-fit: cover;
-    border-radius: 8px;
 }}
 
 .img-fill-container {{
     position: absolute;
     bottom: 0;
     left: 0;
-    width: 110px;
+    width: 140px;
     overflow: hidden;
     z-index: 2;
     transition: height 1.5s cubic-bezier(0.4, 0, 0.2, 1);
@@ -752,22 +856,20 @@ body::after {{
 .img-colored {{
     position: absolute;
     bottom: 0;
-    width: 110px;
-    height: 110px;
-    object-fit: cover;
-    border-radius: 8px;
+    width: 140px;
+    height: 140px;
 }}
 
 .img-shimmer {{
     position: absolute;
     top: 0;
     left: 0;
-    width: 110px;
-    height: 110px;
+    width: 140px;
+    height: 140px;
     background: linear-gradient(135deg, 
         transparent 0%, 
         rgba(255, 255, 255, 0.1) 45%, 
-        rgba(255, 255, 255, 0.2) 50%, 
+        rgba(255, 255, 255, 0.25) 50%, 
         rgba(255, 255, 255, 0.1) 55%, 
         transparent 100%);
     z-index: 3;
@@ -781,19 +883,20 @@ body::after {{
 }}
 
 .med-thermo {{
-    width: 90px;
-    height: 180px;
+    width: 110px;
+    height: 210px;
 }}
 
+/* ==================== ESTADÍSTICAS ==================== */
 .med-stats {{
     display: grid;
     grid-template-columns: 1fr auto 1fr auto 1fr;
     align-items: center;
-    padding: 14px;
+    padding: 20px;
     background: rgba(255, 255, 255, 0.02);
-    border-radius: 14px;
+    border-radius: 16px;
     border: 1px solid rgba(255, 255, 255, 0.05);
-    margin-bottom: 14px;
+    margin-bottom: 20px;
 }}
 
 .stat-item {{
@@ -801,16 +904,16 @@ body::after {{
 }}
 
 .stat-label {{
-    font-size: 10px;
+    font-size: 11px;
     color: rgba(255, 255, 255, 0.5);
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 4px;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
 }}
 
 .stat-value {{
-    font-size: 15px;
+    font-size: 18px;
     font-weight: 900;
     color: #FFFFFF;
 }}
@@ -821,23 +924,47 @@ body::after {{
 
 .stat-divider {{
     width: 1px;
-    height: 35px;
+    height: 40px;
     background: rgba(255, 255, 255, 0.1);
 }}
 
+/* ==================== BARRA DE PROGRESO ==================== */
 .progress-bar {{
-    height: 18px;
-    border-radius: 14px;
+    height: 22px;
+    border-radius: 16px;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.08);
     overflow: hidden;
     position: relative;
 }}
 
+.progress-bar::before {{
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 50%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 2;
+}}
+
 .progress-fill {{
     height: 100%;
     transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
     z-index: 1;
+}}
+
+.progress-fill::after {{
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 50%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.25) 0%, transparent 100%);
 }}
 
 .progress-glow {{
@@ -845,57 +972,66 @@ body::after {{
     top: 0;
     left: 0;
     height: 100%;
-    filter: blur(10px);
+    filter: blur(12px);
     transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);
 }}
 
+/* ==================== OVERLAY DONACIÓN ==================== */
 .donation-overlay {{
     position: fixed;
-    top: 24px;
-    right: 24px;
-    padding: 16px 24px;
+    top: 30px;
+    right: 30px;
+    padding: 20px 28px;
     background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(8, 15, 30, 0.98) 100%);
-    backdrop-filter: blur(30px);
+    backdrop-filter: blur(30px) saturate(180%);
     border: 1px solid rgba(0, 212, 255, 0.4);
-    border-radius: 18px;
+    border-radius: 20px;
     font-weight: 700;
-    font-size: 14px;
+    font-size: 15px;
     z-index: 999;
     box-shadow: 
         0 20px 60px rgba(0, 0, 0, 0.6),
-        0 0 40px rgba(0, 212, 255, 0.3);
-    animation: slideInRight 0.6s ease;
-    min-width: 260px;
+        0 0 40px rgba(0, 212, 255, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    animation: slideInRight 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    min-width: 280px;
 }}
 
 @keyframes slideInRight {{
-    from {{ transform: translateX(400px); opacity: 0; }}
-    to {{ transform: translateX(0); opacity: 1; }}
+    from {{
+        transform: translateX(500px);
+        opacity: 0;
+    }}
+    to {{
+        transform: translateX(0);
+        opacity: 1;
+    }}
 }}
 
 .donation-header {{
     opacity: 0.6;
-    font-size: 10px;
+    font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 1px;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
     font-weight: 800;
 }}
 
 .donation-name {{
-    font-size: 16px;
+    font-size: 18px;
     color: #00FF9F;
     font-weight: 900;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
+    text-shadow: 0 0 20px rgba(0, 255, 159, 0.5);
 }}
 
 .donation-details {{
-    margin-top: 10px;
-    padding-top: 10px;
+    margin-top: 12px;
+    padding-top: 12px;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     display: flex;
     justify-content: space-between;
-    gap: 14px;
+    gap: 16px;
 }}
 
 .donation-detail {{
@@ -903,19 +1039,20 @@ body::after {{
 }}
 
 .donation-detail-label {{
-    font-size: 9px;
+    font-size: 10px;
     opacity: 0.6;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin-bottom: 3px;
+    margin-bottom: 4px;
 }}
 
 .donation-detail-value {{
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 900;
     color: #00D4FF;
 }}
 
+/* ==================== RESPONSIVE ==================== */
 @media (max-width: 1400px) {{
     .grid {{ grid-template-columns: repeat(3, 1fr); }}
 }}
@@ -934,6 +1071,7 @@ body::after {{
 
 <body>
 
+<!-- OVERLAY ÚLTIMA DONACIÓN -->
 <div class="donation-overlay">
     <div class="donation-header">🎁 Última donación</div>
     <div class="donation-name">{ultimo_donante}</div>
@@ -951,8 +1089,9 @@ body::after {{
 
 <div class="main">
 
+    <!-- HEADER -->
     <div class="header">
-        <div style="display: flex; align-items: center; gap: 20px;">
+        <div style="display: flex; align-items: center; gap: 24px;">
             <div class="logo">Generosidad<br>Colombia<br>2025</div>
             <div>
                 <div class="title">Círculo de Generación 2026</div>
@@ -962,6 +1101,7 @@ body::after {{
         <div class="header-badge">🇨🇺 Cuba nos necesita</div>
     </div>
 
+    <!-- SUMMARY -->
     <div class="summary">
         <div class="summary-card">
             <div class="summary-label">Total Meta</div>
@@ -984,6 +1124,7 @@ body::after {{
         </div>
     </div>
 
+    <!-- PANEL -->
     <div class="panel">
         <div class="panel-card">
             <div class="panel-label">🎯 Medicamento más crítico</div>
@@ -999,6 +1140,7 @@ body::after {{
         </div>
     </div>
 
+    <!-- GRID 3x2 -->
     <div class="grid">
         {cards_html}
     </div>
@@ -1009,6 +1151,7 @@ body::after {{
     const metaCompleta = {str(hay_meta_completa).lower()};
     
     if(metaCompleta) {{
+        // Celebración cuando se alcanza meta
         confetti({{
             particleCount: 300,
             spread: 160,
@@ -1036,11 +1179,20 @@ body::after {{
             }});
         }}, 400);
     }}
+
+    // ✅ AUTO-REFRESH MEJORADO - RECARGA CADA 2 SEGUNDOS
+    setTimeout(function() {{
+        location.reload(true); // Forzar recarga desde servidor
+    }}, 2000);
 </script>
 
 </body>
 </html>
 """
 
-components.html(html, height=1200, scrolling=True)
+components.html(html, height=1400, scrolling=True)
+
+# ✅ FORZAR ACTUALIZACIÓN DE STREAMLIT
+time.sleep(0.1)
+st.rerun()
 

@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import streamlit.components.v1 as components
+import time
 
 # ==============================
 # CONFIGURACIÓN PRINCIPAL
@@ -22,9 +23,9 @@ CSV_METAS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSQ-JoPi55tEnwRnP_S
 # ==============================
 # FUNCIONES
 # ==============================
-@st.cache_data(ttl=3)  # ✅ REDUCIDO A 3 SEGUNDOS PARA ACTUALIZACIÓN RÁPIDA
+@st.cache_data(ttl=0)  # ✅ DESACTIVAR CACHE PARA ACTUALIZACIÓN INMEDIATA
 def cargar_datos():
-    """Carga datos con refresh automático cada 3 segundos"""
+    """Carga datos SIN cache para actualización en tiempo real"""
     donaciones = pd.read_csv(CSV_DONACIONES)
     metas = pd.read_csv(CSV_METAS)
     return donaciones, metas
@@ -263,18 +264,18 @@ COLORES_MEDICAMENTOS = [
 
 
 # ==============================
-# IMÁGENES PROFESIONALES DE MEDICAMENTOS
+# IMÁGENES REALES DE MEDICAMENTOS - CORREGIDAS
 # ==============================
 IMG_MAP = {
-    "multivitaminas (gotas)": "https://cdn-icons-png.flaticon.com/512/3004/3004458.png",  # Frasco de medicina
-    "vitaminas c (gotas)": "https://cdn-icons-png.flaticon.com/512/2913/2913133.png",  # Píldoras
-    "vitamina a y d2 (gotas)": "https://cdn-icons-png.flaticon.com/512/3037/3037069.png",  # Botella médica
-    "vitamina d2 forte (gotas)": "https://cdn-icons-png.flaticon.com/512/2913/2913110.png",  # Cápsula
-    "vitamina b (gotas)": "https://cdn-icons-png.flaticon.com/512/3004/3004627.png",  # Jeringa
-    "fumarato ferroso en suspensión": "https://cdn-icons-png.flaticon.com/512/2913/2913148.png",  # Tabletas
+    "multivitaminas (gotas)": "https://cdn-icons-png.flaticon.com/512/2913/2913182.png",  # Frasco gotero
+    "vitaminas c (gotas)": "https://cdn-icons-png.flaticon.com/512/3643/3643913.png",  # Píldora/cápsula
+    "vitamina a y d2 (gotas)": "https://cdn-icons-png.flaticon.com/512/2966/2966334.png",  # Botella médica
+    "vitamina d2 forte (gotas)": "https://cdn-icons-png.flaticon.com/512/3774/3774299.png",  # Frasco medicina
+    "vitamina b (gotas)": "https://cdn-icons-png.flaticon.com/512/2913/2913133.png",  # Tabletas
+    "fumarato ferroso en suspensión": "https://cdn-icons-png.flaticon.com/512/3094/3094840.png",  # Jarabe
 }
 
-DEFAULT_IMG = "https://cdn-icons-png.flaticon.com/512/3037/3037047.png"  # Kit médico
+DEFAULT_IMG = "https://cdn-icons-png.flaticon.com/512/2913/2913155.png"  # Cápsula médica
 
 
 # ==============================
@@ -711,10 +712,10 @@ body::after {{
     font-weight: 600;
 }}
 
-/* ==================== GRID MEDICAMENTOS ==================== */
+/* ==================== GRID 3x2 MEDICAMENTOS ==================== */
 .grid {{
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    grid-template-columns: repeat(3, 1fr);  /* ✅ SIEMPRE 3 COLUMNAS */
     gap: 24px;
 }}
 
@@ -1139,7 +1140,7 @@ body::after {{
         </div>
     </div>
 
-    <!-- GRID -->
+    <!-- GRID 3x2 -->
     <div class="grid">
         {cards_html}
     </div>
@@ -1179,10 +1180,10 @@ body::after {{
         }}, 400);
     }}
 
-    // Auto-refresh cada 3 segundos
-    setTimeout(() => {{
-        window.location.reload();
-    }}, 3000);
+    // ✅ AUTO-REFRESH MEJORADO - RECARGA CADA 2 SEGUNDOS
+    setTimeout(function() {{
+        location.reload(true); // Forzar recarga desde servidor
+    }}, 2000);
 </script>
 
 </body>
@@ -1191,4 +1192,7 @@ body::after {{
 
 components.html(html, height=1400, scrolling=True)
 
+# ✅ FORZAR ACTUALIZACIÓN DE STREAMLIT
+time.sleep(0.1)
+st.rerun()
 

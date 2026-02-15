@@ -1051,7 +1051,7 @@ body::after {{
                 <div class="subtitle">{fecha_hoy}</div>
             </div>
         </div>
-        <div class="header-badge">🇨🇺 Cuba nos necesita</div>
+<div class="header"><div style="display:flex;align-items:center;gap:24px"><div class="logo">Generosidad<br>Colombia<br>2026</div><div><div class="title">Círculo de Generosidad 2026</div><div class="subtitle">{fecha_hoy}</div><div class="header-badge">🇨🇺 Cuba nos necesita</div></div></div></div>
     </div>
 
     <!-- SUMMARY -->

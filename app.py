@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
 from streamlit_autorefresh import st_autorefresh
-import base64
 from datetime import datetime
+import streamlit.components.v1 as components
 
 # ==============================
 # CONFIGURACIÓN PRINCIPAL
@@ -22,235 +22,6 @@ CSV_DONACIONES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT2zRpYc-c3Zzn
 CSV_METAS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT2zRpYc-c3ZznxlPo51_k-5W3mNMzsxl8zlUzxCtugfc2ONIK_C-ht1DzKCR6vy2f1YSnwBx8umQxs/pub?gid=199575778&single=true&output=csv"
 
 # ==============================
-# ESTILO PROYECTOR PREMIUM (UNA SOLA VISTA)
-# ==============================
-st.markdown("""
-<style>
-
-html, body, [class*="css"]  {
-    background: #f2f2f2;
-    font-family: Arial, sans-serif;
-}
-
-.block-container {
-    padding-top: 0.5rem;
-    padding-bottom: 0.5rem;
-    max-width: 100%;
-}
-
-header {visibility: hidden;}
-footer {visibility: hidden;}
-
-.top-header {
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: white;
-    border-radius: 14px;
-    padding: 14px 20px;
-    box-shadow: 0px 4px 14px rgba(0,0,0,0.10);
-    margin-bottom: 14px;
-}
-
-.header-left {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-}
-
-.logo-box {
-    width: 120px;
-    height: 70px;
-    background: #2b4c8a;
-    border-radius: 10px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    color: white;
-    font-weight: 900;
-    font-size: 14px;
-    text-align: center;
-    padding: 8px;
-}
-
-.header-title {
-    font-size: 30px;
-    font-weight: 900;
-    color: #1c2f57;
-    margin: 0;
-}
-
-.header-date {
-    font-size: 13px;
-    font-weight: 700;
-    color: #555;
-    margin-top: 4px;
-}
-
-.header-right {
-    font-size: 30px;
-    font-weight: 900;
-    color: #d19a00;
-}
-
-.summary-row {
-    width: 100%;
-    display: flex;
-    gap: 12px;
-    margin-bottom: 12px;
-}
-
-.summary-card {
-    flex: 1;
-    background: white;
-    border-radius: 14px;
-    padding: 12px 14px;
-    box-shadow: 0px 4px 12px rgba(0,0,0,0.10);
-    text-align: center;
-}
-
-.summary-title {
-    font-size: 13px;
-    font-weight: 700;
-    color: #555;
-    margin-bottom: 5px;
-}
-
-.summary-value {
-    font-size: 38px;
-    font-weight: 900;
-    color: #1c2f57;
-}
-
-.progress-global {
-    flex: 2;
-    background: white;
-    border-radius: 14px;
-    padding: 12px 14px;
-    box-shadow: 0px 4px 12px rgba(0,0,0,0.10);
-}
-
-.progress-title {
-    font-size: 13px;
-    font-weight: 800;
-    color: #555;
-    margin-bottom: 8px;
-    text-align: center;
-}
-
-.progress-bar-outer {
-    width: 100%;
-    height: 22px;
-    background: #d9d9d9;
-    border-radius: 14px;
-    overflow: hidden;
-    border: 1px solid rgba(0,0,0,0.10);
-}
-
-.progress-bar-inner {
-    height: 100%;
-    background: linear-gradient(90deg, #2b4c8a, #1c2f57);
-    width: 0%;
-    transition: width 0.8s ease-in-out;
-}
-
-.progress-label {
-    text-align: right;
-    font-weight: 900;
-    font-size: 14px;
-    color: #111;
-    margin-top: 4px;
-}
-
-.grid-meds {
-    width: 100%;
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 12px;
-}
-
-.med-card {
-    background: white;
-    border-radius: 14px;
-    padding: 14px;
-    box-shadow: 0px 4px 12px rgba(0,0,0,0.10);
-    min-height: 440px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-}
-
-.med-name {
-    font-size: 22px;
-    font-weight: 900;
-    color: #1c2f57;
-    text-align: center;
-    margin-bottom: 10px;
-}
-
-.med-meta {
-    font-size: 14px;
-    font-weight: 700;
-    color: #333;
-    margin-top: 8px;
-    text-align: center;
-}
-
-.med-progress-outer {
-    width: 100%;
-    height: 20px;
-    background: #d9d9d9;
-    border-radius: 12px;
-    overflow: hidden;
-    margin-top: 8px;
-    border: 1px solid rgba(0,0,0,0.10);
-}
-
-.med-progress-inner {
-    height: 100%;
-    background: #2b4c8a;
-    width: 0%;
-    transition: width 0.8s ease-in-out;
-}
-
-.med-percent {
-    font-size: 15px;
-    font-weight: 900;
-    color: #111;
-    text-align: right;
-    margin-top: 4px;
-}
-
-.med-img-box {
-    width: 100%;
-    height: 160px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-top: 12px;
-}
-
-.med-img-box svg {
-    width: 110px;
-    height: 150px;
-}
-
-.med-status {
-    margin-top: 10px;
-    text-align: center;
-    font-size: 13px;
-    font-weight: 800;
-    padding: 6px;
-    border-radius: 10px;
-    background: #f3f3f3;
-    border: 1px solid rgba(0,0,0,0.08);
-}
-
-</style>
-""", unsafe_allow_html=True)
-
-# ==============================
 # FUNCIONES
 # ==============================
 @st.cache_data(ttl=2)
@@ -265,24 +36,23 @@ def formatear_numero(x):
     except:
         return "0"
 
-def obtener_svg_fraco(porcentaje):
-    # frasco con "relleno" según porcentaje
-    porcentaje = max(0, min(float(porcentaje), 100))
-    altura = int(120 * (porcentaje / 100))
+def frasco_svg(pct):
+    pct = max(0, min(float(pct), 100))
+    altura = int(110 * (pct / 100))
     y = 140 - altura
 
     return f"""
-    <svg viewBox="0 0 120 180">
-        <rect x="35" y="20" width="50" height="20" rx="5" fill="#cfcfcf" stroke="#777" stroke-width="2"/>
-        <rect x="30" y="40" width="60" height="120" rx="18" fill="none" stroke="#1c2f57" stroke-width="4"/>
+    <svg viewBox="0 0 120 170">
+        <rect x="40" y="15" width="40" height="18" rx="4" fill="#8ea3c8"/>
+        <rect x="32" y="33" width="56" height="120" rx="18" fill="none" stroke="#dfe9ff" stroke-width="3"/>
 
         <clipPath id="clip">
-            <rect x="30" y="40" width="60" height="120" rx="18"/>
+            <rect x="32" y="33" width="56" height="120" rx="18"/>
         </clipPath>
 
-        <rect x="30" y="{y}" width="60" height="{altura}" fill="#2b4c8a" clip-path="url(#clip)"/>
+        <rect x="32" y="{y}" width="56" height="{altura}" fill="#2b7cff" clip-path="url(#clip)"/>
 
-        <rect x="30" y="40" width="60" height="120" rx="18" fill="none" stroke="#1c2f57" stroke-width="4"/>
+        <rect x="32" y="33" width="56" height="120" rx="18" fill="none" stroke="#dfe9ff" stroke-width="3"/>
     </svg>
     """
 
@@ -304,7 +74,7 @@ if "timestamp" in donaciones.columns:
 
 # Donante público
 for col in donaciones.columns:
-    if "nombre" in col and "dashboard" in col:
+    if "dashboard" in col and "nombre" in col:
         donaciones.rename(columns={col: "donante_publico"}, inplace=True)
 
 if "donante_publico" not in donaciones.columns:
@@ -323,11 +93,10 @@ metas["meta"] = pd.to_numeric(metas["meta"], errors="coerce").fillna(0)
 
 lista_medicamentos = metas["medicamento"].tolist()
 
-# Crear columnas medicamentos si no existen
+# Crear columnas si no existen
 for med in lista_medicamentos:
-    col = med.lower()
-    if col not in donaciones.columns:
-        donaciones[col] = 0
+    if med.lower() not in donaciones.columns:
+        donaciones[med.lower()] = 0
 
 # Convertir a numérico
 for med in lista_medicamentos:
@@ -343,7 +112,7 @@ donaciones_largo = donaciones.melt(
 
 donaciones_largo = donaciones_largo[donaciones_largo["cantidad"] > 0]
 
-# Avance completo (incluye medicamentos sin donaciones)
+# Avance por medicamento
 donado_por_med = donaciones_largo.groupby("medicamento", as_index=False)["cantidad"].sum()
 
 metas_temp = metas.copy()
@@ -357,118 +126,310 @@ avance["porcentaje"] = avance.apply(
     axis=1
 )
 
-# Global
 total_recaudado = avance["cantidad"].sum()
 total_meta = avance["meta"].sum()
 porcentaje_total = (total_recaudado / total_meta * 100) if total_meta > 0 else 0
 
-# Para mostrar nombres originales
+# Nombre original
 map_nombre_original = dict(zip(metas_temp["medicamento"], metas["medicamento"]))
 
-# Fecha actual
-fecha_hoy = datetime.now().strftime("%d de %B de %Y")
+# Fecha
+fecha_hoy = datetime.now().strftime("%d %B %Y")
 
 # ==============================
-# HEADER
+# HTML COMPLETO (PROFESIONAL Y OSCURO)
 # ==============================
-st.markdown(f"""
-<div class="top-header">
-    <div class="header-left">
-        <div class="logo-box">
-            GENEROSIDAD<br>COLOMBIA<br>2025
-        </div>
-        <div>
-            <div class="header-title">Círculo de Generosidad</div>
-            <div class="header-date">{fecha_hoy}</div>
-        </div>
-    </div>
+cards_html = ""
 
-    <div class="header-right">
-        Córdoba nos necesita
-    </div>
-</div>
-""", unsafe_allow_html=True)
+for _, r in avance.iterrows():
+    nombre = map_nombre_original.get(r["medicamento"], r["medicamento"])
+    donado = float(r["cantidad"])
+    meta = float(r["meta"])
+    pct = float(r["porcentaje"])
 
-# ==============================
-# RESUMEN SUPERIOR
-# ==============================
-porcentaje_total_barra = max(0, min(porcentaje_total, 100))
+    pct_bar = max(0, min(pct, 100))
 
-st.markdown(f"""
-<div class="summary-row">
-
-    <div class="summary-card">
-        <div class="summary-title">Total meta</div>
-        <div class="summary-value">{formatear_numero(total_meta)}</div>
-    </div>
-
-    <div class="summary-card">
-        <div class="summary-title">Total recolectado</div>
-        <div class="summary-value">{formatear_numero(total_recaudado)}</div>
-    </div>
-
-    <div class="progress-global">
-        <div class="progress-title">Avance global</div>
-        <div class="progress-bar-outer">
-            <div class="progress-bar-inner" style="width:{porcentaje_total_barra}%;"></div>
-        </div>
-        <div class="progress-label">{porcentaje_total:.1f}%</div>
-    </div>
-
-</div>
-""", unsafe_allow_html=True)
-
-# ==============================
-# TARJETAS HORIZONTALES (5 COLUMNAS)
-# ==============================
-st.markdown("<div class='grid-meds'>", unsafe_allow_html=True)
-
-for _, row in avance.iterrows():
-    med_key = row["medicamento"]
-    nombre_original = map_nombre_original.get(med_key, med_key)
-
-    cantidad = float(row["cantidad"])
-    meta = float(row["meta"])
-    porcentaje = float(row["porcentaje"])
-
-    porcentaje_barra = max(0, min(porcentaje, 100))
-
-    if porcentaje >= 100:
+    if pct >= 100:
         estado = "Meta alcanzada"
-    elif porcentaje >= 70:
+        estado_color = "#00e0a4"
+    elif pct >= 70:
         estado = "Avance alto"
-    elif porcentaje >= 40:
+        estado_color = "#2b7cff"
+    elif pct >= 40:
         estado = "Avance medio"
+        estado_color = "#ffb100"
     else:
         estado = "Avance bajo"
+        estado_color = "#ff4b4b"
 
-    svg = obtener_svg_fraco(porcentaje)
+    svg = frasco_svg(pct)
 
-    st.markdown(f"""
+    cards_html += f"""
     <div class="med-card">
+        <div class="med-name">{nombre}</div>
 
-        <div class="med-name">{nombre_original}</div>
-
-        <div class="med-img-box">
+        <div class="med-img">
             {svg}
         </div>
 
-        <div class="med-meta">
-            Donado: <b>{formatear_numero(cantidad)}</b><br>
-            Meta: <b>{formatear_numero(meta)}</b>
+        <div class="med-values">
+            <div>Donado: <b>{formatear_numero(donado)}</b></div>
+            <div>Meta: <b>{formatear_numero(meta)}</b></div>
         </div>
 
-        <div class="med-progress-outer">
-            <div class="med-progress-inner" style="width:{porcentaje_barra}%;"></div>
+        <div class="bar-outer">
+            <div class="bar-inner" style="width:{pct_bar}%;"></div>
         </div>
 
-        <div class="med-percent">{porcentaje:.1f}%</div>
+        <div class="pct">{pct:.1f}%</div>
 
-        <div class="med-status">{estado}</div>
-
+        <div class="status" style="border:1px solid {estado_color}; color:{estado_color};">
+            {estado}
+        </div>
     </div>
-    """, unsafe_allow_html=True)
+    """
 
-st.markdown("</div>", unsafe_allow_html=True)
+html = f"""
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+
+body {{
+    margin: 0;
+    padding: 0;
+    background: #0b0f17;
+    color: white;
+    font-family: "Segoe UI", Arial, sans-serif;
+}}
+
+.main {{
+    padding: 18px;
+}}
+
+.header {{
+    background: linear-gradient(145deg, #131a2b, #0b0f17);
+    padding: 18px 22px;
+    border-radius: 18px;
+    box-shadow: 0px 6px 25px rgba(0,0,0,0.65);
+    border: 1px solid rgba(255,255,255,0.10);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}}
+
+.logo {{
+    width: 140px;
+    height: 80px;
+    background: #2b7cff;
+    border-radius: 14px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: 900;
+    text-align: center;
+    font-size: 14px;
+}}
+
+.title {{
+    font-size: 34px;
+    font-weight: 900;
+}}
+
+.subtitle {{
+    font-size: 13px;
+    opacity: 0.7;
+    margin-top: 4px;
+}}
+
+.header-right {{
+    font-size: 22px;
+    font-weight: 900;
+    color: #ffd44a;
+}}
+
+.summary {{
+    margin-top: 14px;
+    display: flex;
+    gap: 12px;
+}}
+
+.summary-card {{
+    flex: 1;
+    background: linear-gradient(145deg, #141a28, #0b0f17);
+    padding: 14px;
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,0.10);
+    box-shadow: 0px 6px 22px rgba(0,0,0,0.55);
+    text-align: center;
+}}
+
+.summary-title {{
+    font-size: 13px;
+    opacity: 0.7;
+    font-weight: 700;
+}}
+
+.summary-value {{
+    font-size: 36px;
+    font-weight: 900;
+    margin-top: 6px;
+}}
+
+.global {{
+    flex: 2;
+    background: linear-gradient(145deg, #141a28, #0b0f17);
+    padding: 14px;
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,0.10);
+    box-shadow: 0px 6px 22px rgba(0,0,0,0.55);
+}}
+
+.global-title {{
+    font-size: 13px;
+    opacity: 0.7;
+    font-weight: 800;
+    margin-bottom: 8px;
+}}
+
+.global-bar {{
+    height: 20px;
+    border-radius: 14px;
+    overflow: hidden;
+    background: rgba(255,255,255,0.12);
+}}
+
+.global-fill {{
+    height: 100%;
+    background: linear-gradient(90deg, #2b7cff, #00e0a4);
+    width: {max(0, min(porcentaje_total, 100))}%;
+}}
+
+.global-pct {{
+    text-align: right;
+    font-size: 14px;
+    font-weight: 900;
+    margin-top: 6px;
+}}
+
+.grid {{
+    margin-top: 16px;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px;
+}}
+
+.med-card {{
+    background: linear-gradient(145deg, #141a28, #0b0f17);
+    padding: 14px;
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,0.10);
+    box-shadow: 0px 6px 22px rgba(0,0,0,0.55);
+    min-height: 430px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}}
+
+.med-name {{
+    font-size: 18px;
+    font-weight: 900;
+    text-align: center;
+}}
+
+.med-img {{
+    margin-top: 10px;
+    display: flex;
+    justify-content: center;
+}}
+
+.med-values {{
+    font-size: 13px;
+    opacity: 0.85;
+    text-align: center;
+    margin-top: 10px;
+    line-height: 1.6;
+}}
+
+.bar-outer {{
+    height: 18px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.12);
+    overflow: hidden;
+    margin-top: 10px;
+}}
+
+.bar-inner {{
+    height: 100%;
+    background: linear-gradient(90deg, #2b7cff, #00e0a4);
+}}
+
+.pct {{
+    font-size: 14px;
+    font-weight: 900;
+    text-align: right;
+    margin-top: 5px;
+}}
+
+.status {{
+    margin-top: 10px;
+    padding: 7px;
+    border-radius: 12px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 900;
+    background: rgba(255,255,255,0.06);
+}}
+
+</style>
+</head>
+
+<body>
+<div class="main">
+
+    <div class="header">
+        <div style="display:flex; align-items:center; gap:16px;">
+            <div class="logo">GENEROSIDAD<br>COLOMBIA<br>2025</div>
+            <div>
+                <div class="title">Círculo de Generosidad</div>
+                <div class="subtitle">{fecha_hoy}</div>
+            </div>
+        </div>
+
+        <div class="header-right">Córdoba nos necesita</div>
+    </div>
+
+    <div class="summary">
+        <div class="summary-card">
+            <div class="summary-title">Total meta</div>
+            <div class="summary-value">{formatear_numero(total_meta)}</div>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-title">Total recolectado</div>
+            <div class="summary-value">{formatear_numero(total_recaudado)}</div>
+        </div>
+
+        <div class="global">
+            <div class="global-title">Avance global</div>
+            <div class="global-bar">
+                <div class="global-fill"></div>
+            </div>
+            <div class="global-pct">{porcentaje_total:.1f}%</div>
+        </div>
+    </div>
+
+    <div class="grid">
+        {cards_html}
+    </div>
+
+</div>
+</body>
+</html>
+"""
+
+# Render en Streamlit como página web real
+components.html(html, height=1100, scrolling=True)
+
 
 

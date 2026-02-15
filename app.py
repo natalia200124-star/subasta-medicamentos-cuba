@@ -1051,7 +1051,7 @@ body::after {{
                 <div class="subtitle">{fecha_hoy}</div>
             </div>
         </div>
-</div><div class="header-badge">🇨🇺 Cuba nos necesita</div></div></div></div>
+</div><div class="header-badge">Cuba nos necesita</div></div></div></div>
 
     <!-- SUMMARY -->
     <div class="summary">

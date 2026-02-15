@@ -26,7 +26,25 @@ st.set_page_config(
 # 5 segundos NO siempre es mejor, Google Sheets suele cachear más.
 # 8 segundos da mejores resultados en práctica.
 count = st_autorefresh(interval=8000, key="datarefresh")
+# ==============================
+# CARGA DE DATOS DESDE API (APPS SCRIPT)
+# ==============================
+API_URL = "https://script.google.com/macros/s/AKfycbzVt9cAlSVmC5kpDVBRHyj1ak_dKIDj5ZHuZcX7Niz12swOHgDhYnq9HzQegakkPFLqWg/exec"
 
+try:
+    resp = requests.get(API_URL)
+    data = resp.json()
+
+    donaciones_raw = data["donaciones"]
+    metas_raw = data["metas"]
+
+    donaciones = pd.DataFrame(donaciones_raw[1:], columns=donaciones_raw[0])
+    metas = pd.DataFrame(metas_raw[1:], columns=metas_raw[0])
+
+except Exception as e:
+    st.error("❌ Error cargando datos desde la API")
+    st.write(e)
+    st.stop()
 
 # ==============================
 # LINKS CSV CON ANTI-CACHÉ

@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import streamlit.components.v1 as components
-from streamlit_autorefresh import st_autorefresh
+# from streamlit_autorefresh import st_autorefresh  # ❌ ELIMINADO - causa oscurecimiento
 import time
 import hashlib
 import requests
@@ -16,10 +16,13 @@ st.set_page_config(
     page_icon="🏥",
     layout="wide"
 )
+
 # ==============================
 # AUTO-REFRESH
 # ==============================
-count = st_autorefresh(interval=8000, key="datarefresh")
+# count = st_autorefresh(interval=8000, key="datarefresh")  # ❌ ELIMINADO - causa oscurecimiento
+# ✅ AHORA el auto-refresh se hace en JavaScript dentro del HTML
+
 # ==============================
 # CARGA DE DATOS DESDE API (APPS SCRIPT)
 # ==============================
@@ -1131,6 +1134,12 @@ body::after {{
             }});
         }}, 500);
     }}
+
+    // ✅ AUTO-REFRESH EN JAVASCRIPT - Sin oscurecimiento
+    // Recarga la página cada 8 segundos de forma suave
+    setTimeout(function() {{
+        window.location.reload();
+    }}, 8000);
 </script>
 
 </body>

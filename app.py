@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-from streamlit_autorefresh import st_autorefresh
 from datetime import datetime
 import streamlit.components.v1 as components
 
@@ -13,14 +12,12 @@ st.set_page_config(
     layout="wide"
 )
 
-# REFRESH MÁS SUAVE (NO 2s)
-st_autorefresh(interval=5000, key="autorefresh")
-
 # ==============================
 # LINKS CSV
 # ==============================
 CSV_DONACIONES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSQ-JoPi55tEnwRnP_SyYy5gawWPJoQaQ0jI4PLgDpA4CcEdKjSb2IFftcc475zBr5Ou34BTrSdZ8v9/pub?gid=1709067163&single=true&output=csv"
 CSV_METAS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSQ-JoPi55tEnwRnP_SyYy5gawWPJoQaQ0jI4PLgDpA4CcEdKjSb2IFftcc475zBr5Ou34BTrSdZ8v9/pub?gid=1531001200&single=true&output=csv"
+
 
 # ==============================
 # FUNCIONES
@@ -39,9 +36,6 @@ def formatear_numero(x):
         return "0"
 
 
-# ==============================
-# TERMÓMETRO SVG (vertical)
-# ==============================
 def termometro_svg(pct, color="#2b7cff"):
     pct = max(0, min(float(pct), 100))
     altura = int(110 * (pct / 100))
@@ -103,12 +97,17 @@ lista_medicamentos = metas["medicamento"].tolist()
 if "timestamp" in donaciones.columns:
     donaciones.rename(columns={"timestamp": "fecha_hora"}, inplace=True)
 
+# detectar nombre donante (busca cualquier columna que contenga "nombre" y "dashboard")
+col_donante = None
 for col in donaciones.columns:
-    if "dashboard" in col and "nombre" in col:
-        donaciones.rename(columns={col: "donante_publico"}, inplace=True)
+    if "nombre" in col and "dashboard" in col:
+        col_donante = col
 
-if "donante_publico" not in donaciones.columns:
-    donaciones["donante_publico"] = "Anónimo"
+if col_donante:
+    donaciones.rename(columns={col_donante: "donante_publico"}, inplace=True)
+else:
+    if "donante_publico" not in donaciones.columns:
+        donaciones["donante_publico"] = "Anónimo"
 
 donaciones["donante_publico"] = donaciones["donante_publico"].fillna("").astype(str).str.strip()
 donaciones.loc[donaciones["donante_publico"] == "", "donante_publico"] = "Anónimo"
@@ -122,6 +121,33 @@ for med in lista_medicamentos:
 
 for med in lista_medicamentos:
     donaciones[med.lower()] = pd.to_numeric(donaciones[med.lower()], errors="coerce").fillna(0)
+
+# ==============================
+# ÚLTIMA DONACIÓN REAL (NOMBRE + MONTO)
+# ==============================
+ultimo_donante = "Anónimo"
+ultima_hora = ""
+ultimo_monto = 0
+
+if "fecha_hora" in donaciones.columns:
+    try:
+        donaciones["fecha_hora"] = pd.to_datetime(donaciones["fecha_hora"], errors="coerce")
+        donaciones = donaciones.sort_values("fecha_hora", ascending=False)
+
+        fila_ultima = donaciones.iloc[0]
+        ultimo_donante = fila_ultima["donante_publico"]
+
+        suma_medicamentos = 0
+        for med in lista_medicamentos:
+            suma_medicamentos += float(fila_ultima[med.lower()])
+
+        ultimo_monto = suma_medicamentos
+
+        if pd.notnull(fila_ultima["fecha_hora"]):
+            ultima_hora = fila_ultima["fecha_hora"].strftime("%H:%M:%S")
+
+    except:
+        pass
 
 # ==============================
 # DONACIONES EN FORMATO LARGO
@@ -162,30 +188,31 @@ map_nombre_original = dict(zip(metas_temp["medicamento"], metas["medicamento"]))
 fecha_hoy = datetime.now().strftime("%d %B %Y")
 
 # ==============================
-# COLORES DIFERENTES
+# COLORES
 # ==============================
 COLORES_MEDICAMENTOS = [
     "#2b7cff",
+    "#ff9800",
     "#00e0a4",
-    "#ffb100",
     "#ff4b4b",
     "#a855f7",
     "#00d4ff",
-    "#ff6a00",
-    "#22c55e",
-    "#3b82f6",
-    "#f43f5e",
 ]
 
 # ==============================
-# IMÁGENES DIFERENTES POR MEDICAMENTO
-# (puedes cambiar los links por imágenes reales tuyas)
+# IMÁGENES (CORREGIDAS Y DIFERENTES)
 # ==============================
 IMG_MAP = {
     "multivitaminas (gotas)": "https://cdn-icons-png.flaticon.com/512/2966/2966486.png",
-    "vitaminas c (gotas)": "https://cdn-icons-png.flaticon.com/512/415/415733.png",
+
+    # CAMBIO A NARANJA PARA VITAMINA C
+    "vitaminas c (gotas)": "https://cdn-icons-png.flaticon.com/512/415/415680.png",
+
     "vitamina a y d2 (gotas)": "https://cdn-icons-png.flaticon.com/512/822/822143.png",
-    "vitamina d2 forte (gotas)": "https://cdn-icons-png.flaticon.com/512/822/822087.png",
+
+    # LINK CORREGIDO PARA QUE NO SE ROMPA
+    "vitamina d2 forte (gotas)": "https://cdn-icons-png.flaticon.com/512/2966/2966367.png",
+
     "vitamina b (gotas)": "https://cdn-icons-png.flaticon.com/512/2966/2966327.png",
     "fumarato ferroso en suspensión": "https://cdn-icons-png.flaticon.com/512/2966/2966391.png",
 }
@@ -193,43 +220,21 @@ IMG_MAP = {
 DEFAULT_IMG = "https://cdn-icons-png.flaticon.com/512/2966/2966493.png"
 
 # ==============================
-# ÚLTIMA DONACIÓN
-# ==============================
-ultimo_donante = "Anónimo"
-ultima_hora = ""
-
-if "fecha_hora" in donaciones.columns:
-    try:
-        donaciones["fecha_hora"] = pd.to_datetime(donaciones["fecha_hora"], errors="coerce")
-        donaciones = donaciones.sort_values("fecha_hora", ascending=False)
-        ultimo_donante = donaciones.iloc[0]["donante_publico"]
-        ultima_hora = donaciones.iloc[0]["fecha_hora"].strftime("%H:%M:%S")
-    except:
-        pass
-
-# ==============================
-# MEDICAMENTO MÁS CRÍTICO
+# MEDICAMENTO CRÍTICO Y AVANZADO
 # ==============================
 critico = avance.sort_values("porcentaje", ascending=True).iloc[0]
 critico_nombre = map_nombre_original.get(critico["medicamento"], critico["medicamento"])
 critico_pct = float(critico["porcentaje"])
 critico_faltante = float(critico["faltante"])
 
-# TOP 3 críticos
-top_criticos = avance.sort_values("porcentaje", ascending=True).head(3)
-
-# MÁS AVANZADO
 mas_avanzado = avance.sort_values("porcentaje", ascending=False).iloc[0]
 mas_av_nombre = map_nombre_original.get(mas_avanzado["medicamento"], mas_avanzado["medicamento"])
 mas_av_pct = float(mas_avanzado["porcentaje"])
 
-# ==============================
-# CONFETTI SI ALGUNO LLEGA A 100%
-# ==============================
 hay_meta_completa = (avance["porcentaje"] >= 100).any()
 
 # ==============================
-# HTML TARJETAS
+# TARJETAS
 # ==============================
 cards_html = ""
 
@@ -243,45 +248,33 @@ for _, r in avance.iterrows():
     pct = float(r["porcentaje"])
     pct_bar = max(0, min(pct, 100))
 
-    if pct >= 100:
-        estado = "Meta alcanzada"
-        estado_color = "#00e0a4"
-    elif pct >= 70:
-        estado = "Avance alto"
-        estado_color = "#2b7cff"
-    elif pct >= 40:
-        estado = "Avance medio"
-        estado_color = "#ffb100"
-    else:
-        estado = "Avance bajo"
-        estado_color = "#ff4b4b"
-
     idx = lista_medicamentos.index(nombre_original) if nombre_original in lista_medicamentos else 0
     color_main = COLORES_MEDICAMENTOS[idx % len(COLORES_MEDICAMENTOS)]
 
     img_url = IMG_MAP.get(nombre_lower, DEFAULT_IMG)
-
     thermo = termometro_svg(pct, color=color_main)
 
     cards_html += f"""
     <div class="med-card">
 
-        <div class="med-title">
-            {nombre_original}
-        </div>
+        <div class="med-title">{nombre_original}</div>
 
         <div class="med-body">
 
             <div class="med-image-box">
-                <img src="{img_url}" class="med-img"/>
 
-                <div class="med-fill" style="height:{pct_bar}%; background: linear-gradient(180deg, {color_main}, rgba(0,224,164,0.7));"></div>
+                <div class="img-container">
+                    <img src="{img_url}" class="med-img-base"/>
+
+                    <!-- relleno sobre la imagen -->
+                    <div class="img-fill" style="height:{pct_bar}%; background:{color_main};"></div>
+
+                    <img src="{img_url}" class="med-img-top"/>
+                </div>
+
             </div>
 
-            <div class="med-thermo">
-                {thermo}
-            </div>
-
+            <div class="med-thermo">{thermo}</div>
         </div>
 
         <div class="med-values">
@@ -295,15 +288,11 @@ for _, r in avance.iterrows():
         </div>
 
         <div class="pct">{pct:.1f}%</div>
-
-        <div class="status" style="border:1px solid {estado_color}; color:{estado_color};">
-            {estado}
-        </div>
     </div>
     """
 
 # ==============================
-# HTML COMPLETO
+# HTML FINAL SIN PARPADEO (AUTOREFRESH JS)
 # ==============================
 html = f"""
 <!DOCTYPE html>
@@ -313,7 +302,6 @@ html = f"""
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
 <style>
-
 body {{
     margin: 0;
     padding: 0;
@@ -325,19 +313,18 @@ body {{
 
 .main {{
     padding: 18px;
-    animation: fadeIn 0.45s ease-in-out;
+    animation: fadeIn 0.5s ease-in-out;
 }}
 
 @keyframes fadeIn {{
-    from {{ opacity: 0.2; filter: blur(2px); transform: translateY(6px); }}
-    to {{ opacity: 1; filter: blur(0px); transform: translateY(0px); }}
+    from {{ opacity: 0; transform: translateY(8px); }}
+    to {{ opacity: 1; transform: translateY(0px); }}
 }}
 
 .header {{
     background: linear-gradient(145deg, #141c2e, #070b12);
     padding: 18px 22px;
     border-radius: 18px;
-    box-shadow: 0px 6px 25px rgba(0,0,0,0.70);
     border: 1px solid rgba(255,255,255,0.10);
     display: flex;
     justify-content: space-between;
@@ -356,7 +343,6 @@ body {{
     text-align: center;
     font-size: 14px;
     letter-spacing: 1px;
-    box-shadow: 0px 4px 18px rgba(43,124,255,0.45);
 }}
 
 .title {{
@@ -367,7 +353,6 @@ body {{
 .subtitle {{
     font-size: 13px;
     opacity: 0.7;
-    margin-top: 4px;
 }}
 
 .header-right {{
@@ -388,14 +373,7 @@ body {{
     padding: 14px;
     border-radius: 18px;
     border: 1px solid rgba(255,255,255,0.10);
-    box-shadow: 0px 6px 22px rgba(0,0,0,0.55);
     text-align: center;
-    transition: 0.25s;
-}}
-
-.summary-card:hover {{
-    transform: translateY(-4px);
-    border: 1px solid rgba(43,124,255,0.35);
 }}
 
 .summary-title {{
@@ -416,7 +394,6 @@ body {{
     padding: 14px;
     border-radius: 18px;
     border: 1px solid rgba(255,255,255,0.10);
-    box-shadow: 0px 6px 22px rgba(0,0,0,0.55);
 }}
 
 .global-title {{
@@ -437,7 +414,7 @@ body {{
     height: 100%;
     background: linear-gradient(90deg, #2b7cff, #00e0a4);
     width: {max(0, min(porcentaje_total, 100))}%;
-    transition: 0.4s;
+    transition: 0.7s;
 }}
 
 .global-pct {{
@@ -459,7 +436,6 @@ body {{
     padding: 14px;
     border-radius: 18px;
     border: 1px solid rgba(255,255,255,0.10);
-    box-shadow: 0px 6px 22px rgba(0,0,0,0.55);
 }}
 
 .panel-title {{
@@ -492,18 +468,10 @@ body {{
     padding: 14px;
     border-radius: 18px;
     border: 1px solid rgba(255,255,255,0.10);
-    box-shadow: 0px 6px 22px rgba(0,0,0,0.55);
     min-height: 520px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    transition: 0.25s;
-}}
-
-.med-card:hover {{
-    transform: translateY(-5px);
-    border: 1px solid rgba(255,255,255,0.18);
-    box-shadow: 0px 10px 28px rgba(0,0,0,0.80);
 }}
 
 .med-title {{
@@ -521,8 +489,8 @@ body {{
 }}
 
 .med-image-box {{
-    width: 130px;
-    height: 180px;
+    width: 150px;
+    height: 190px;
     border-radius: 18px;
     position: relative;
     overflow: hidden;
@@ -533,30 +501,43 @@ body {{
     align-items: center;
 }}
 
-.med-img {{
-    width: 85px;
-    height: 85px;
-    opacity: 0.95;
-    z-index: 2;
-    filter: drop-shadow(0px 4px 10px rgba(0,0,0,0.75));
+.img-container {{
+    position: relative;
+    width: 120px;
+    height: 120px;
 }}
 
-.med-fill {{
+.med-img-base {{
+    position: absolute;
+    width: 120px;
+    height: 120px;
+    filter: grayscale(100%) brightness(0.5);
+    opacity: 0.55;
+    z-index: 1;
+}}
+
+.img-fill {{
     position: absolute;
     bottom: 0;
     left: 0;
     width: 100%;
-    opacity: 0.50;
-    z-index: 1;
-    transition: 0.7s;
+    opacity: 0.55;
+    z-index: 2;
+    transition: 0.9s;
+}}
+
+.med-img-top {{
+    position: absolute;
+    width: 120px;
+    height: 120px;
+    z-index: 3;
+    mix-blend-mode: screen;
+    opacity: 0.9;
 }}
 
 .med-thermo {{
     width: 90px;
-    height: 180px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    height: 190px;
 }}
 
 .med-values {{
@@ -577,7 +558,7 @@ body {{
 
 .bar-inner {{
     height: 100%;
-    transition: 0.6s;
+    transition: 0.7s;
 }}
 
 .pct {{
@@ -585,16 +566,6 @@ body {{
     font-weight: 900;
     text-align: right;
     margin-top: 5px;
-}}
-
-.status {{
-    margin-top: 10px;
-    padding: 7px;
-    border-radius: 12px;
-    text-align: center;
-    font-size: 12px;
-    font-weight: 900;
-    background: rgba(255,255,255,0.05);
 }}
 
 .overlay {{
@@ -608,26 +579,11 @@ body {{
     font-weight: 900;
     font-size: 13px;
     z-index: 999;
-    box-shadow: 0px 8px 28px rgba(0,0,0,0.65);
 }}
 
 .overlay b {{
     color: #00e0a4;
 }}
-
-.refresh-badge {{
-    position: fixed;
-    bottom: 18px;
-    right: 18px;
-    padding: 8px 14px;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 14px;
-    font-size: 12px;
-    font-weight: 800;
-    opacity: 0.75;
-}}
-
 </style>
 </head>
 
@@ -635,11 +591,8 @@ body {{
 
 <div class="overlay">
     Última donación: <b>{ultimo_donante}</b><br>
+    Monto: <b>{formatear_numero(ultimo_monto)}</b><br>
     Hora: {ultima_hora}
-</div>
-
-<div class="refresh-badge">
-    Dashboard en vivo · Actualización automática
 </div>
 
 <div class="main">
@@ -706,6 +659,11 @@ body {{
             origin: {{ y: 0.6 }}
         }});
     }}
+
+    // REFRESH SIN PARPADEO (solo recarga el iframe cada 5s)
+    setTimeout(() => {{
+        window.location.reload();
+    }}, 5000);
 </script>
 
 </body>

@@ -18,9 +18,30 @@ st.set_page_config(
 )
 
 # ==============================
-# AUTO-REFRESH
+# CONTENEDOR PARA ACTUALIZACIÓN AUTOMÁTICA SUAVE
 # ==============================
-count = st_autorefresh(interval=8000, key="datarefresh")
+dashboard_container = st.empty()  # Contenedor principal del dashboard
+
+# Actualización automática cada 8 segundos
+while True:
+    try:
+        # Cargar datos nuevos
+        donaciones, metas = cargar_datos()
+
+        # Mostrar dashboard dentro del contenedor sin oscurecer
+        with dashboard_container.container():
+            # ==============================
+            # AQUÍ VA TODO TU CÓDIGO DE VISUALIZACIÓN
+            # (cards_html, HTML, gráficos, confeti, etc.)
+            # ==============================
+            st.write(f"Última actualización: {datetime.now().strftime('%H:%M:%S')}")
+            # Tu código actual de tarjetas y HTML se pega aquí tal cual
+
+    except Exception as e:
+        st.error(f"❌ Error al cargar datos: {str(e)}")
+
+    # Esperar 8 segundos antes de la siguiente actualización
+    time.sleep(8)
 
 # ==============================
 # CARGA DE DATOS DESDE API (APPS SCRIPT)

@@ -69,6 +69,7 @@ except:
 donaciones.columns = [c.strip().lower() for c in donaciones.columns]
 metas.columns = [c.strip().lower() for c in metas.columns]
 
+
 # ==============================
 # NORMALIZACIÓN METAS
 # ==============================
@@ -91,26 +92,28 @@ metas["meta"] = pd.to_numeric(metas["meta"], errors="coerce").fillna(0)
 
 lista_medicamentos = metas["medicamento"].tolist()
 
+
 # ==============================
 # NORMALIZACIÓN DONACIONES
 # ==============================
 if "timestamp" in donaciones.columns:
     donaciones.rename(columns={"timestamp": "fecha_hora"}, inplace=True)
 
-# detectar nombre donante (busca cualquier columna que contenga "nombre" y "dashboard")
-col_donante = None
+# BUSCAR COLUMNA CONTACTO (OPCIONAL)
+col_contacto = None
 for col in donaciones.columns:
-    if "nombre" in col and "dashboard" in col:
-        col_donante = col
+    if "contacto" in col:
+        col_contacto = col
+        break
 
-if col_donante:
-    donaciones.rename(columns={col_donante: "donante_publico"}, inplace=True)
+if col_contacto:
+    donaciones.rename(columns={col_contacto: "donante_publico"}, inplace=True)
 else:
-    if "donante_publico" not in donaciones.columns:
-        donaciones["donante_publico"] = "Anónimo"
+    donaciones["donante_publico"] = "Donante anónimo"
 
 donaciones["donante_publico"] = donaciones["donante_publico"].fillna("").astype(str).str.strip()
-donaciones.loc[donaciones["donante_publico"] == "", "donante_publico"] = "Anónimo"
+donaciones.loc[donaciones["donante_publico"] == "", "donante_publico"] = "Donante anónimo"
+
 
 # ==============================
 # CREAR COLUMNAS MEDICAMENTOS SI NO EXISTEN
@@ -122,10 +125,11 @@ for med in lista_medicamentos:
 for med in lista_medicamentos:
     donaciones[med.lower()] = pd.to_numeric(donaciones[med.lower()], errors="coerce").fillna(0)
 
+
 # ==============================
-# ÚLTIMA DONACIÓN REAL (NOMBRE + MONTO)
+# ÚLTIMA DONACIÓN REAL
 # ==============================
-ultimo_donante = "Anónimo"
+ultimo_donante = "Donante anónimo"
 ultima_hora = ""
 ultimo_monto = 0
 
@@ -149,6 +153,7 @@ if "fecha_hora" in donaciones.columns:
     except:
         pass
 
+
 # ==============================
 # DONACIONES EN FORMATO LARGO
 # ==============================
@@ -160,6 +165,7 @@ donaciones_largo = donaciones.melt(
 )
 
 donaciones_largo = donaciones_largo[donaciones_largo["cantidad"] > 0]
+
 
 # ==============================
 # CALCULOS PRINCIPALES
@@ -187,6 +193,7 @@ porcentaje_total = (total_recaudado / total_meta * 100) if total_meta > 0 else 0
 map_nombre_original = dict(zip(metas_temp["medicamento"], metas["medicamento"]))
 fecha_hoy = datetime.now().strftime("%d %B %Y")
 
+
 # ==============================
 # COLORES
 # ==============================
@@ -199,25 +206,21 @@ COLORES_MEDICAMENTOS = [
     "#00d4ff",
 ]
 
+
 # ==============================
-# IMÁGENES (CORREGIDAS Y DIFERENTES)
+# IMÁGENES ÚNICAS (TODAS DIFERENTES)
 # ==============================
 IMG_MAP = {
-    "multivitaminas (gotas)": "https://cdn-icons-png.flaticon.com/512/2966/2966486.png",
-
-    # CAMBIO A NARANJA PARA VITAMINA C
-    "vitaminas c (gotas)": "https://cdn-icons-png.flaticon.com/512/415/415680.png",
-
+    "multivitaminas (gotas)": "https://cdn-icons-png.flaticon.com/512/1047/1047711.png",
+    "vitaminas c (gotas)": "https://cdn-icons-png.flaticon.com/512/415/415680.png",  # naranja 🍊
     "vitamina a y d2 (gotas)": "https://cdn-icons-png.flaticon.com/512/822/822143.png",
-
-    # LINK CORREGIDO PARA QUE NO SE ROMPA
     "vitamina d2 forte (gotas)": "https://cdn-icons-png.flaticon.com/512/2966/2966367.png",
-
-    "vitamina b (gotas)": "https://cdn-icons-png.flaticon.com/512/2966/2966327.png",
-    "fumarato ferroso en suspensión": "https://cdn-icons-png.flaticon.com/512/2966/2966391.png",
+    "vitamina b (gotas)": "https://cdn-icons-png.flaticon.com/512/2966/2966320.png",
+    "fumarato ferroso en suspensión": "https://cdn-icons-png.flaticon.com/512/4320/4320351.png",
 }
 
 DEFAULT_IMG = "https://cdn-icons-png.flaticon.com/512/2966/2966493.png"
+
 
 # ==============================
 # MEDICAMENTO CRÍTICO Y AVANZADO
@@ -233,8 +236,9 @@ mas_av_pct = float(mas_avanzado["porcentaje"])
 
 hay_meta_completa = (avance["porcentaje"] >= 100).any()
 
+
 # ==============================
-# TARJETAS
+# TARJETAS CON RELLENO REAL POR MÁSCARA
 # ==============================
 cards_html = ""
 
@@ -263,13 +267,24 @@ for _, r in avance.iterrows():
 
             <div class="med-image-box">
 
-                <div class="img-container">
-                    <img src="{img_url}" class="med-img-base"/>
+                <div class="img-mask-container">
 
-                    <!-- relleno sobre la imagen -->
-                    <div class="img-fill" style="height:{pct_bar}%; background:{color_main};"></div>
+                    <!-- imagen base gris -->
+                    <img src="{img_url}" class="img-gray"/>
 
-                    <img src="{img_url}" class="med-img-top"/>
+                    <!-- relleno real dentro de la figura -->
+                    <div class="img-liquid"
+                        style="
+                            height:{pct_bar}%;
+                            background:{color_main};
+                            -webkit-mask-image: url('{img_url}');
+                            mask-image: url('{img_url}');
+                        ">
+                    </div>
+
+                    <!-- contorno superior -->
+                    <img src="{img_url}" class="img-outline"/>
+
                 </div>
 
             </div>
@@ -291,8 +306,9 @@ for _, r in avance.iterrows():
     </div>
     """
 
+
 # ==============================
-# HTML FINAL SIN PARPADEO (AUTOREFRESH JS)
+# HTML FINAL
 # ==============================
 html = f"""
 <!DOCTYPE html>
@@ -313,12 +329,6 @@ body {{
 
 .main {{
     padding: 18px;
-    animation: fadeIn 0.5s ease-in-out;
-}}
-
-@keyframes fadeIn {{
-    from {{ opacity: 0; transform: translateY(8px); }}
-    to {{ opacity: 1; transform: translateY(0px); }}
 }}
 
 .header {{
@@ -501,38 +511,48 @@ body {{
     align-items: center;
 }}
 
-.img-container {{
+.img-mask-container {{
     position: relative;
     width: 120px;
     height: 120px;
 }}
 
-.med-img-base {{
+.img-gray {{
     position: absolute;
     width: 120px;
     height: 120px;
-    filter: grayscale(100%) brightness(0.5);
-    opacity: 0.55;
+    opacity: 0.30;
+    filter: grayscale(100%) brightness(0.6);
     z-index: 1;
 }}
 
-.img-fill {{
+.img-liquid {{
     position: absolute;
     bottom: 0;
     left: 0;
-    width: 100%;
-    opacity: 0.55;
+    width: 120px;
     z-index: 2;
-    transition: 0.9s;
+    opacity: 0.85;
+
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+
+    -webkit-mask-size: contain;
+    mask-size: contain;
+
+    -webkit-mask-position: center;
+    mask-position: center;
+
+    transition: 0.8s ease-in-out;
 }}
 
-.med-img-top {{
+.img-outline {{
     position: absolute;
     width: 120px;
     height: 120px;
     z-index: 3;
-    mix-blend-mode: screen;
-    opacity: 0.9;
+    opacity: 0.85;
+    filter: drop-shadow(0px 0px 6px rgba(255,255,255,0.12));
 }}
 
 .med-thermo {{
@@ -654,13 +674,12 @@ body {{
     const metaCompleta = {str(hay_meta_completa).lower()};
     if(metaCompleta){{
         confetti({{
-            particleCount: 200,
-            spread: 120,
+            particleCount: 220,
+            spread: 130,
             origin: {{ y: 0.6 }}
         }});
     }}
 
-    // REFRESH SIN PARPADEO (solo recarga el iframe cada 5s)
     setTimeout(() => {{
         window.location.reload();
     }}, 5000);

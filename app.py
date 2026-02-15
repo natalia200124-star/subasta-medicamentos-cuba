@@ -7,7 +7,7 @@ import streamlit.components.v1 as components
 # CONFIGURACIÓN PRINCIPAL
 # ==============================
 st.set_page_config(
-    page_title="Subasta Solidaria - Medicamentos para Cuba",
+    page_title="Círculo de Generosidad - Dashboard Ejecutivo",
     page_icon="💊",
     layout="wide"
 )
@@ -36,23 +36,54 @@ def formatear_numero(x):
         return "0"
 
 
-def termometro_svg(pct, color="#2b7cff"):
+def termometro_moderno_svg(pct, color="#00d4ff"):
+    """Termómetro con diseño moderno y efectos de brillo"""
     pct = max(0, min(float(pct), 100))
-    altura = int(110 * (pct / 100))
-    y = 140 - altura
+    altura = int(115 * (pct / 100))
+    y = 145 - altura
 
     return f"""
-    <svg viewBox="0 0 120 190">
-        <circle cx="60" cy="160" r="18" fill="rgba(255,255,255,0.10)" stroke="#dbeafe" stroke-width="3"/>
-        <rect x="50" y="25" width="20" height="130" rx="10" fill="rgba(255,255,255,0.08)" stroke="#dbeafe" stroke-width="3"/>
+    <svg viewBox="0 0 120 200">
+        <defs>
+            <linearGradient id="bulbGrad{hash(color)}" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" style="stop-color:{color};stop-opacity:1" />
+                <stop offset="100%" style="stop-color:{color};stop-opacity:0.7" />
+            </linearGradient>
+            <linearGradient id="tubeGrad{hash(color)}" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" style="stop-color:{color};stop-opacity:0.9" />
+                <stop offset="100%" style="stop-color:{color};stop-opacity:0.6" />
+            </linearGradient>
+            <filter id="glow{hash(color)}">
+                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                <feMerge>
+                    <feMergeNode in="coloredBlur"/>
+                    <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+            </filter>
+        </defs>
+        
+        <!-- Bulbo externo con gradiente -->
+        <circle cx="60" cy="165" r="20" fill="rgba(10,15,30,0.4)" stroke="rgba(100,180,255,0.3)" stroke-width="2"/>
+        
+        <!-- Tubo externo -->
+        <rect x="48" y="30" width="24" height="130" rx="12" fill="rgba(10,15,30,0.4)" stroke="rgba(100,180,255,0.3)" stroke-width="2"/>
 
-        <clipPath id="clipT">
-            <rect x="50" y="25" width="20" height="130" rx="10"/>
+        <clipPath id="clipThermo{hash(color)}">
+            <rect x="48" y="30" width="24" height="130" rx="12"/>
         </clipPath>
 
-        <rect x="50" y="{y}" width="20" height="{altura}" fill="{color}" clip-path="url(#clipT)"/>
+        <!-- Relleno del tubo con gradiente y brillo -->
+        <rect x="48" y="{y}" width="24" height="{altura}" fill="url(#tubeGrad{hash(color)})" 
+              clip-path="url(#clipThermo{hash(color)})" filter="url(#glow{hash(color)})"/>
 
-        <circle cx="60" cy="160" r="14" fill="{color}" opacity="0.85"/>
+        <!-- Bulbo interno con gradiente y brillo -->
+        <circle cx="60" cy="165" r="16" fill="url(#bulbGrad{hash(color)})" filter="url(#glow{hash(color)})"/>
+        
+        <!-- Marcas de medición -->
+        <line x1="73" y1="50" x2="80" y2="50" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>
+        <line x1="73" y1="80" x2="80" y2="80" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>
+        <line x1="73" y1="110" x2="80" y2="110" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>
+        <line x1="73" y1="140" x2="80" y2="140" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>
     </svg>
     """
 
@@ -94,25 +125,35 @@ lista_medicamentos = metas["medicamento"].tolist()
 
 
 # ==============================
-# NORMALIZACIÓN DONACIONES
+# NORMALIZACIÓN DONACIONES - PRIVACIDAD
 # ==============================
 if "timestamp" in donaciones.columns:
     donaciones.rename(columns={"timestamp": "fecha_hora"}, inplace=True)
 
-# BUSCAR COLUMNA CONTACTO (OPCIONAL)
+# ⚠️ CORRECCIÓN CRÍTICA: Buscar columna "Contacto (opcional)" para privacidad
 col_contacto = None
 for col in donaciones.columns:
-    if "contacto" in col:
+    if "contacto" in col.lower() and "opcional" in col.lower():
         col_contacto = col
         break
 
+# Si no se encuentra, buscar solo "contacto"
+if not col_contacto:
+    for col in donaciones.columns:
+        if "contacto" in col.lower():
+            col_contacto = col
+            break
+
+# Renombrar a "donante_publico" para claridad
 if col_contacto:
     donaciones.rename(columns={col_contacto: "donante_publico"}, inplace=True)
 else:
     donaciones["donante_publico"] = "Donante anónimo"
 
+# Limpiar valores vacíos y convertir a "Donante anónimo"
 donaciones["donante_publico"] = donaciones["donante_publico"].fillna("").astype(str).str.strip()
 donaciones.loc[donaciones["donante_publico"] == "", "donante_publico"] = "Donante anónimo"
+donaciones.loc[donaciones["donante_publico"].str.lower() == "nan", "donante_publico"] = "Donante anónimo"
 
 
 # ==============================
@@ -127,7 +168,7 @@ for med in lista_medicamentos:
 
 
 # ==============================
-# ÚLTIMA DONACIÓN REAL
+# ÚLTIMA DONACIÓN - SOLO CONTACTO PÚBLICO
 # ==============================
 ultimo_donante = "Donante anónimo"
 ultima_hora = ""
@@ -139,6 +180,7 @@ if "fecha_hora" in donaciones.columns:
         donaciones = donaciones.sort_values("fecha_hora", ascending=False)
 
         fila_ultima = donaciones.iloc[0]
+        # ✅ USAR SOLO CONTACTO PÚBLICO, NUNCA NOMBRE REAL
         ultimo_donante = fila_ultima["donante_publico"]
 
         suma_medicamentos = 0
@@ -195,24 +237,24 @@ fecha_hoy = datetime.now().strftime("%d %B %Y")
 
 
 # ==============================
-# COLORES
+# PALETA DE COLORES MODERNA - HEALTHTECH
 # ==============================
 COLORES_MEDICAMENTOS = [
-    "#2b7cff",
-    "#ff9800",
-    "#00e0a4",
-    "#ff4b4b",
-    "#a855f7",
-    "#00d4ff",
+    "#00d4ff",  # Cyan brillante
+    "#ff6b9d",  # Rosa vibrante
+    "#00ff88",  # Verde neón
+    "#ff9f43",  # Naranja cálido
+    "#a855f7",  # Púrpura
+    "#ffd93d",  # Amarillo dorado
 ]
 
 
 # ==============================
-# IMÁGENES ÚNICAS (TODAS DIFERENTES)
+# IMÁGENES CON COLORES ORIGINALES
 # ==============================
 IMG_MAP = {
     "multivitaminas (gotas)": "https://cdn-icons-png.flaticon.com/512/1047/1047711.png",
-    "vitaminas c (gotas)": "https://cdn-icons-png.flaticon.com/512/415/415680.png",  # naranja 🍊
+    "vitaminas c (gotas)": "https://cdn-icons-png.flaticon.com/512/415/415680.png",
     "vitamina a y d2 (gotas)": "https://cdn-icons-png.flaticon.com/512/822/822143.png",
     "vitamina d2 forte (gotas)": "https://cdn-icons-png.flaticon.com/512/2966/2966367.png",
     "vitamina b (gotas)": "https://cdn-icons-png.flaticon.com/512/2966/2966320.png",
@@ -238,7 +280,7 @@ hay_meta_completa = (avance["porcentaje"] >= 100).any()
 
 
 # ==============================
-# TARJETAS CON RELLENO REAL POR MÁSCARA
+# TARJETAS CON DISEÑO MODERNO
 # ==============================
 cards_html = ""
 
@@ -256,7 +298,7 @@ for _, r in avance.iterrows():
     color_main = COLORES_MEDICAMENTOS[idx % len(COLORES_MEDICAMENTOS)]
 
     img_url = IMG_MAP.get(nombre_lower, DEFAULT_IMG)
-    thermo = termometro_svg(pct, color=color_main)
+    thermo = termometro_moderno_svg(pct, color=color_main)
 
     cards_html += f"""
     <div class="med-card">
@@ -267,24 +309,17 @@ for _, r in avance.iterrows():
 
             <div class="med-image-box">
 
-                <div class="img-mask-container">
-
-                    <!-- imagen base gris -->
-                    <img src="{img_url}" class="img-gray"/>
-
-                    <!-- relleno real dentro de la figura -->
-                    <div class="img-liquid"
-                        style="
-                            height:{pct_bar}%;
-                            background:{color_main};
-                            -webkit-mask-image: url('{img_url}');
-                            mask-image: url('{img_url}');
-                        ">
+                <div class="img-container">
+                    <!-- Imagen base en escala de grises -->
+                    <img src="{img_url}" class="img-base"/>
+                    
+                    <!-- Capa de color que se llena progresivamente -->
+                    <div class="img-fill" style="height:{pct_bar}%;">
+                        <img src="{img_url}" class="img-colored" style="filter: drop-shadow(0 0 8px {color_main}80);"/>
                     </div>
-
-                    <!-- contorno superior -->
-                    <img src="{img_url}" class="img-outline"/>
-
+                    
+                    <!-- Brillo superior -->
+                    <div class="img-shine"></div>
                 </div>
 
             </div>
@@ -293,332 +328,611 @@ for _, r in avance.iterrows():
         </div>
 
         <div class="med-values">
-            <div>Donado: <b>{formatear_numero(donado)}</b></div>
-            <div>Meta: <b>{formatear_numero(meta)}</b></div>
-            <div>Faltan: <b style="color:#ffd44a;">{formatear_numero(faltante)}</b></div>
+            <div class="value-row">
+                <span class="value-label">Donado:</span>
+                <span class="value-num">{formatear_numero(donado)}</span>
+            </div>
+            <div class="value-row">
+                <span class="value-label">Meta:</span>
+                <span class="value-num">{formatear_numero(meta)}</span>
+            </div>
+            <div class="value-row">
+                <span class="value-label">Faltan:</span>
+                <span class="value-num highlight">{formatear_numero(faltante)}</span>
+            </div>
         </div>
 
-        <div class="bar-outer">
-            <div class="bar-inner" style="width:{pct_bar}%; background: linear-gradient(90deg, {color_main}, #00e0a4);"></div>
+        <div class="bar-container">
+            <div class="bar-fill" style="width:{pct_bar}%; background: linear-gradient(90deg, {color_main}, {color_main}dd);"></div>
         </div>
 
-        <div class="pct">{pct:.1f}%</div>
+        <div class="pct-display">{pct:.1f}%</div>
+
     </div>
     """
 
 
 # ==============================
-# HTML FINAL
+# HTML COMPLETO - DISEÑO PREMIUM
 # ==============================
 html = f"""
 <!DOCTYPE html>
 <html>
 <head>
-
-<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
 
 <style>
-body {{
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+* {{
     margin: 0;
     padding: 0;
-    background: #070b12;
-    color: white;
-    font-family: "Segoe UI", Arial, sans-serif;
+    box-sizing: border-box;
+}}
+
+body {{
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: linear-gradient(135deg, #0a0e1a 0%, #1a1f2e 50%, #0f1419 100%);
+    color: #f0f4f8;
+    min-height: 100vh;
+    padding: 20px;
     overflow-x: hidden;
 }}
 
-.main {{
-    padding: 18px;
+/* Efecto de partículas animadas en el fondo */
+body::before {{
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        radial-gradient(circle at 20% 50%, rgba(0, 212, 255, 0.03) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(255, 107, 157, 0.03) 0%, transparent 50%),
+        radial-gradient(circle at 40% 20%, rgba(168, 85, 247, 0.03) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
 }}
 
+.main {{
+    max-width: 1800px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+}}
+
+/* ==================== HEADER ==================== */
 .header {{
-    background: linear-gradient(145deg, #141c2e, #070b12);
-    padding: 18px 22px;
-    border-radius: 18px;
-    border: 1px solid rgba(255,255,255,0.10);
+    background: linear-gradient(135deg, rgba(20, 28, 46, 0.95) 0%, rgba(10, 15, 26, 0.95) 100%);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(100, 180, 255, 0.15);
+    border-radius: 24px;
+    padding: 24px 32px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    margin-bottom: 24px;
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }}
 
 .logo {{
-    width: 140px;
-    height: 80px;
-    background: linear-gradient(135deg, #2b7cff, #00e0a4);
-    border-radius: 14px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    background: linear-gradient(135deg, #00d4ff 0%, #0091ff 100%);
+    color: #0a0e1a;
+    padding: 14px 18px;
+    border-radius: 16px;
     font-weight: 900;
+    font-size: 11px;
+    line-height: 1.3;
     text-align: center;
-    font-size: 14px;
-    letter-spacing: 1px;
+    letter-spacing: 0.5px;
+    box-shadow: 
+        0 4px 16px rgba(0, 212, 255, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }}
 
 .title {{
-    font-size: 34px;
+    font-size: 32px;
     font-weight: 900;
+    background: linear-gradient(135deg, #ffffff 0%, #c5d9ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.5px;
 }}
 
 .subtitle {{
-    font-size: 13px;
-    opacity: 0.7;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.6);
+    margin-top: 4px;
+    font-weight: 500;
 }}
 
 .header-right {{
-    font-size: 22px;
-    font-weight: 900;
-    color: #ffd44a;
+    font-size: 16px;
+    font-weight: 700;
+    color: #00ff88;
+    padding: 12px 24px;
+    background: rgba(0, 255, 136, 0.1);
+    border: 1px solid rgba(0, 255, 136, 0.3);
+    border-radius: 12px;
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
 }}
 
+/* ==================== SUMMARY ==================== */
 .summary {{
-    margin-top: 14px;
     display: flex;
-    gap: 12px;
+    gap: 16px;
+    margin-bottom: 24px;
 }}
 
 .summary-card {{
     flex: 1;
-    background: linear-gradient(145deg, #141c2e, #070b12);
-    padding: 14px;
-    border-radius: 18px;
-    border: 1px solid rgba(255,255,255,0.10);
-    text-align: center;
+    background: linear-gradient(135deg, rgba(20, 28, 46, 0.9) 0%, rgba(10, 15, 26, 0.9) 100%);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(100, 180, 255, 0.15);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    position: relative;
+    overflow: hidden;
+}}
+
+.summary-card::before {{
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(0, 212, 255, 0.05) 0%, transparent 70%);
+    pointer-events: none;
 }}
 
 .summary-title {{
     font-size: 13px;
-    opacity: 0.7;
+    color: rgba(255, 255, 255, 0.6);
     font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
 }}
 
 .summary-value {{
-    font-size: 36px;
+    font-size: 38px;
     font-weight: 900;
+    background: linear-gradient(135deg, #ffffff 0%, #00d4ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
     margin-top: 6px;
 }}
 
 .global {{
     flex: 2;
-    background: linear-gradient(145deg, #141c2e, #070b12);
-    padding: 14px;
-    border-radius: 18px;
-    border: 1px solid rgba(255,255,255,0.10);
+    background: linear-gradient(135deg, rgba(20, 28, 46, 0.9) 0%, rgba(10, 15, 26, 0.9) 100%);
+    backdrop-filter: blur(10px);
+    padding: 20px;
+    border-radius: 20px;
+    border: 1px solid rgba(100, 180, 255, 0.15);
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }}
 
 .global-title {{
     font-size: 13px;
-    opacity: 0.7;
-    font-weight: 800;
-    margin-bottom: 8px;
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
 }}
 
 .global-bar {{
-    height: 20px;
-    border-radius: 14px;
+    height: 24px;
+    border-radius: 16px;
     overflow: hidden;
-    background: rgba(255,255,255,0.10);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(100, 180, 255, 0.1);
+    position: relative;
+}}
+
+.global-bar::before {{
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 50%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, transparent 100%);
+    pointer-events: none;
 }}
 
 .global-fill {{
     height: 100%;
-    background: linear-gradient(90deg, #2b7cff, #00e0a4);
+    background: linear-gradient(90deg, #00d4ff 0%, #00ff88 100%);
     width: {max(0, min(porcentaje_total, 100))}%;
-    transition: 0.7s;
+    transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+    position: relative;
+}}
+
+.global-fill::after {{
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 50%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0%, transparent 100%);
 }}
 
 .global-pct {{
     text-align: right;
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 900;
-    margin-top: 6px;
+    margin-top: 8px;
+    color: #00ff88;
 }}
 
+/* ==================== PANEL ==================== */
 .panel {{
-    margin-top: 14px;
+    margin-top: 16px;
     display: flex;
-    gap: 12px;
+    gap: 16px;
 }}
 
 .panel-card {{
     flex: 1;
-    background: linear-gradient(145deg, #141c2e, #070b12);
-    padding: 14px;
-    border-radius: 18px;
-    border: 1px solid rgba(255,255,255,0.10);
+    background: linear-gradient(135deg, rgba(20, 28, 46, 0.9) 0%, rgba(10, 15, 26, 0.9) 100%);
+    backdrop-filter: blur(10px);
+    padding: 20px;
+    border-radius: 20px;
+    border: 1px solid rgba(100, 180, 255, 0.15);
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }}
 
 .panel-title {{
-    font-size: 13px;
-    opacity: 0.7;
-    font-weight: 800;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }}
 
 .panel-value {{
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 900;
-    margin-top: 6px;
+    margin-top: 8px;
 }}
 
 .panel-sub {{
     font-size: 13px;
-    opacity: 0.85;
-    margin-top: 4px;
+    color: rgba(255, 255, 255, 0.7);
+    margin-top: 6px;
+    font-weight: 500;
 }}
 
+/* ==================== GRID ==================== */
 .grid {{
-    margin-top: 16px;
+    margin-top: 24px;
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
 }}
 
+/* ==================== TARJETAS MEDICAMENTOS ==================== */
 .med-card {{
-    background: linear-gradient(145deg, #141c2e, #070b12);
-    padding: 14px;
-    border-radius: 18px;
-    border: 1px solid rgba(255,255,255,0.10);
-    min-height: 520px;
+    background: linear-gradient(135deg, rgba(20, 28, 46, 0.95) 0%, rgba(10, 15, 26, 0.95) 100%);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(100, 180, 255, 0.15);
+    border-radius: 24px;
+    padding: 24px;
+    min-height: 560px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    box-shadow: 
+        0 12px 40px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}}
+
+.med-card::before {{
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(100, 180, 255, 0.03) 0%, transparent 70%);
+    pointer-events: none;
+    transition: opacity 0.4s;
+}}
+
+.med-card:hover {{
+    transform: translateY(-8px);
+    border-color: rgba(0, 212, 255, 0.4);
+    box-shadow: 
+        0 20px 60px rgba(0, 0, 0, 0.5),
+        0 0 40px rgba(0, 212, 255, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}}
+
+.med-card:hover::before {{
+    opacity: 1.5;
 }}
 
 .med-title {{
-    font-size: 16px;
+    font-size: 17px;
     font-weight: 900;
     text-align: center;
+    background: linear-gradient(135deg, #ffffff 0%, #c5d9ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 16px;
 }}
 
 .med-body {{
-    margin-top: 12px;
     display: flex;
     justify-content: center;
-    gap: 12px;
+    gap: 16px;
     align-items: center;
+    margin: 20px 0;
 }}
 
+/* ==================== IMÁGENES CON COLORES ORIGINALES ==================== */
 .med-image-box {{
-    width: 150px;
-    height: 190px;
-    border-radius: 18px;
+    width: 160px;
+    height: 200px;
+    border-radius: 20px;
     position: relative;
     overflow: hidden;
-    border: 1px solid rgba(255,255,255,0.12);
-    background: rgba(255,255,255,0.03);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0.01) 100%);
+    border: 1px solid rgba(100, 180, 255, 0.1);
     display: flex;
     justify-content: center;
     align-items: center;
+    box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.2);
 }}
 
-.img-mask-container {{
+.img-container {{
     position: relative;
-    width: 120px;
-    height: 120px;
+    width: 130px;
+    height: 130px;
 }}
 
-.img-gray {{
+.img-base {{
     position: absolute;
-    width: 120px;
-    height: 120px;
-    opacity: 0.30;
-    filter: grayscale(100%) brightness(0.6);
+    width: 130px;
+    height: 130px;
+    filter: grayscale(100%) brightness(0.4);
+    opacity: 0.5;
     z-index: 1;
 }}
 
-.img-liquid {{
+.img-fill {{
     position: absolute;
     bottom: 0;
     left: 0;
-    width: 120px;
+    width: 130px;
+    overflow: hidden;
     z-index: 2;
-    opacity: 0.85;
-
-    -webkit-mask-repeat: no-repeat;
-    mask-repeat: no-repeat;
-
-    -webkit-mask-size: contain;
-    mask-size: contain;
-
-    -webkit-mask-position: center;
-    mask-position: center;
-
-    transition: 0.8s ease-in-out;
+    transition: height 1.2s cubic-bezier(0.4, 0, 0.2, 1);
 }}
 
-.img-outline {{
+.img-colored {{
     position: absolute;
-    width: 120px;
-    height: 120px;
+    bottom: 0;
+    width: 130px;
+    height: 130px;
+}}
+
+.img-shine {{
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 130px;
+    height: 130px;
+    background: linear-gradient(135deg, 
+        transparent 0%, 
+        rgba(255, 255, 255, 0.1) 45%, 
+        rgba(255, 255, 255, 0.2) 50%, 
+        rgba(255, 255, 255, 0.1) 55%, 
+        transparent 100%);
     z-index: 3;
-    opacity: 0.85;
-    filter: drop-shadow(0px 0px 6px rgba(255,255,255,0.12));
+    pointer-events: none;
 }}
 
 .med-thermo {{
-    width: 90px;
-    height: 190px;
+    width: 100px;
+    height: 200px;
 }}
 
+/* ==================== VALORES ==================== */
 .med-values {{
-    font-size: 13px;
-    opacity: 0.9;
-    text-align: center;
-    margin-top: 10px;
-    line-height: 1.7;
-}}
-
-.bar-outer {{
-    height: 18px;
+    margin: 16px 0;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.02);
     border-radius: 12px;
-    background: rgba(255,255,255,0.10);
+    border: 1px solid rgba(100, 180, 255, 0.08);
+}}
+
+.value-row {{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}}
+
+.value-row:last-child {{
+    border-bottom: none;
+}}
+
+.value-label {{
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 600;
+}}
+
+.value-num {{
+    font-size: 15px;
+    font-weight: 800;
+    color: #ffffff;
+}}
+
+.value-num.highlight {{
+    color: #ffd93d;
+}}
+
+/* ==================== BARRA DE PROGRESO ==================== */
+.bar-container {{
+    height: 20px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(100, 180, 255, 0.1);
     overflow: hidden;
-    margin-top: 10px;
+    margin-top: 12px;
+    position: relative;
 }}
 
-.bar-inner {{
+.bar-container::before {{
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 50%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 1;
+}}
+
+.bar-fill {{
     height: 100%;
-    transition: 0.7s;
+    transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 16px rgba(0, 212, 255, 0.4);
+    position: relative;
 }}
 
-.pct {{
-    font-size: 14px;
+.bar-fill::after {{
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 50%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, transparent 100%);
+}}
+
+.pct-display {{
+    font-size: 16px;
     font-weight: 900;
     text-align: right;
-    margin-top: 5px;
+    margin-top: 8px;
+    color: #00ff88;
 }}
 
+/* ==================== OVERLAY DONACIÓN ==================== */
 .overlay {{
     position: fixed;
-    top: 18px;
-    right: 18px;
-    padding: 12px 16px;
-    background: rgba(20, 28, 46, 0.92);
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 14px;
-    font-weight: 900;
-    font-size: 13px;
+    top: 24px;
+    right: 24px;
+    padding: 16px 24px;
+    background: linear-gradient(135deg, rgba(20, 28, 46, 0.98) 0%, rgba(10, 15, 26, 0.98) 100%);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    border-radius: 16px;
+    font-weight: 700;
+    font-size: 14px;
     z-index: 999;
+    box-shadow: 
+        0 12px 40px rgba(0, 0, 0, 0.5),
+        0 0 30px rgba(0, 212, 255, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    animation: slideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}}
+
+@keyframes slideIn {{
+    from {{
+        transform: translateX(400px);
+        opacity: 0;
+    }}
+    to {{
+        transform: translateX(0);
+        opacity: 1;
+    }}
 }}
 
 .overlay b {{
-    color: #00e0a4;
+    color: #00ff88;
+    font-weight: 900;
+}}
+
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 1400px) {{
+    .grid {{
+        grid-template-columns: repeat(3, 1fr);
+    }}
+}}
+
+@media (max-width: 1024px) {{
+    .grid {{
+        grid-template-columns: repeat(2, 1fr);
+    }}
+}}
+
+@media (max-width: 768px) {{
+    .grid {{
+        grid-template-columns: 1fr;
+    }}
+    
+    .summary {{
+        flex-direction: column;
+    }}
+    
+    .panel {{
+        flex-direction: column;
+    }}
 }}
 </style>
 </head>
 
 <body>
 
+<!-- OVERLAY CON ÚLTIMA DONACIÓN (SOLO CONTACTO PÚBLICO O ANÓNIMO) -->
 <div class="overlay">
-    Última donación: <b>{ultimo_donante}</b><br>
-    Monto: <b>{formatear_numero(ultimo_monto)}</b><br>
-    Hora: {ultima_hora}
+    <div style="opacity: 0.7; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">
+        🎁 Última donación
+    </div>
+    <div style="font-size: 16px;">
+        <b>{ultimo_donante}</b>
+    </div>
+    <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1);">
+        Monto: <b>{formatear_numero(ultimo_monto)}</b><br>
+        Hora: <b>{ultima_hora}</b>
+    </div>
 </div>
 
 <div class="main">
 
+    <!-- HEADER -->
     <div class="header">
-        <div style="display:flex; align-items:center; gap:16px;">
+        <div style="display:flex; align-items:center; gap:20px;">
             <div class="logo">GENEROSIDAD<br>COLOMBIA<br>2025</div>
             <div>
                 <div class="title">Círculo de Generosidad</div>
@@ -626,9 +940,10 @@ body {{
             </div>
         </div>
 
-        <div class="header-right">Córdoba nos necesita</div>
+        <div class="header-right">✨ Córdoba nos necesita</div>
     </div>
 
+    <!-- SUMMARY -->
     <div class="summary">
         <div class="summary-card">
             <div class="summary-title">Total meta</div>
@@ -649,21 +964,23 @@ body {{
         </div>
     </div>
 
+    <!-- PANEL -->
     <div class="panel">
         <div class="panel-card">
-            <div class="panel-title">Medicamento más crítico</div>
-            <div class="panel-value" style="color:#ff4b4b;">{critico_nombre}</div>
+            <div class="panel-title">🎯 Medicamento más crítico</div>
+            <div class="panel-value" style="color:#ff6b9d;">{critico_nombre}</div>
             <div class="panel-sub">Avance: <b>{critico_pct:.1f}%</b></div>
-            <div class="panel-sub">Faltan: <b style="color:#ffd44a;">{formatear_numero(critico_faltante)}</b></div>
+            <div class="panel-sub">Faltan: <b style="color:#ffd93d;">{formatear_numero(critico_faltante)}</b></div>
         </div>
 
         <div class="panel-card">
-            <div class="panel-title">Medicamento más avanzado</div>
-            <div class="panel-value" style="color:#00e0a4;">{mas_av_nombre}</div>
+            <div class="panel-title">🚀 Medicamento más avanzado</div>
+            <div class="panel-value" style="color:#00ff88;">{mas_av_nombre}</div>
             <div class="panel-sub">Avance: <b>{mas_av_pct:.1f}%</b></div>
         </div>
     </div>
 
+    <!-- GRID -->
     <div class="grid">
         {cards_html}
     </div>
@@ -672,14 +989,36 @@ body {{
 
 <script>
     const metaCompleta = {str(hay_meta_completa).lower()};
+    
     if(metaCompleta){{
+        // Confetti cuando se alcanza una meta
         confetti({{
-            particleCount: 220,
-            spread: 130,
-            origin: {{ y: 0.6 }}
+            particleCount: 250,
+            spread: 140,
+            origin: {{ y: 0.6 }},
+            colors: ['#00d4ff', '#ff6b9d', '#00ff88', '#a855f7']
         }});
+        
+        setTimeout(() => {{
+            confetti({{
+                particleCount: 150,
+                angle: 60,
+                spread: 100,
+                origin: {{ x: 0 }}
+            }});
+        }}, 300);
+        
+        setTimeout(() => {{
+            confetti({{
+                particleCount: 150,
+                angle: 120,
+                spread: 100,
+                origin: {{ x: 1 }}
+            }});
+        }}, 300);
     }}
 
+    // Auto-refresh cada 5 segundos
     setTimeout(() => {{
         window.location.reload();
     }}, 5000);
@@ -689,7 +1028,7 @@ body {{
 </html>
 """
 
-components.html(html, height=1250, scrolling=True)
+components.html(html, height=1300, scrolling=True)
 
 
 

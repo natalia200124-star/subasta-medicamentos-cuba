@@ -6,6 +6,10 @@ from streamlit_autorefresh import st_autorefresh
 import time
 import hashlib
 
+import requests
+from io import StringIO
+
+
 # ==============================
 # CONFIGURACIÓN PRINCIPAL
 # ==============================
@@ -16,9 +20,9 @@ st.set_page_config(
 )
 
 # ==============================
-# AUTO-REFRESH CADA 5 SEGUNDOS
+# AUTO-REFRESH CADA 10 SEGUNDOS (MEJOR QUE 5)
 # ==============================
-count = st_autorefresh(interval=5000, key="datarefresh")
+count = st_autorefresh(interval=10000, key="datarefresh")
 
 
 # ==============================
@@ -43,9 +47,13 @@ if 'ultima_donacion_id' not in st.session_state:
 if 'mostrar_confeti' not in st.session_state:
     st.session_state.mostrar_confeti = False
 
-# ✅ NUEVO: Guardar última versión "buena" del dataset para que NO se devuelva
+# Guardar última versión "buena" del dataset
 if "donaciones_guardadas" not in st.session_state:
     st.session_state.donaciones_guardadas = None
+
+# Guardar hash para detectar cambios reales
+if "hash_donaciones" not in st.session_state:
+    st.session_state.hash_donaciones = None
 
 
 # ==============================
@@ -60,28 +68,54 @@ def generar_id_donacion(fila):
     return hashlib.md5(contenido.encode()).hexdigest()
 
 
+def leer_csv_sin_cache(url):
+    """
+    Lee un CSV desde URL usando requests para reducir caché de Google Sheets.
+    """
+    r = requests.get(url, headers={"Cache-Control": "no-cache"})
+    r.raise_for_status()
+    return pd.read_csv(StringIO(r.text))
+
+
 def cargar_datos():
     """
     Carga datos SIN CACHÉ - Siempre datos frescos
     CRÍTICO: NO usar @st.cache_data aquí
 
-    ✅ MEJORA: evita que Google Sheets devuelva versiones viejas
-    guardando siempre el dataset más completo (más filas).
+    MEJORA:
+    - Lee con requests (reduce caché)
+    - Usa HASH para detectar cambios reales
+    - Control anti-retroceso si Google devuelve versiones viejas
     """
     url_donaciones = get_csv_url_with_timestamp(CSV_BASE_DONACIONES)
     url_metas = get_csv_url_with_timestamp(CSV_BASE_METAS)
 
-    donaciones = pd.read_csv(url_donaciones)
-    metas = pd.read_csv(url_metas)
+    donaciones = leer_csv_sin_cache(url_donaciones)
+    metas = leer_csv_sin_cache(url_metas)
 
-    # ✅ CONTROL ANTI-RETROCESO:
-    # Si Google devuelve un CSV más corto, no lo aceptamos.
+    # Normalizar columnas para hash estable
+    donaciones.columns = [c.strip() for c in donaciones.columns]
+
+    # Crear hash del dataset completo
+    firma_actual = hashlib.md5(
+        pd.util.hash_pandas_object(donaciones, index=True).values.tobytes()
+    ).hexdigest()
+
     if st.session_state.donaciones_guardadas is None:
         st.session_state.donaciones_guardadas = donaciones.copy()
+        st.session_state.hash_donaciones = firma_actual
+
     else:
-        if len(donaciones) >= len(st.session_state.donaciones_guardadas):
+        # Si el hash cambió, es dataset nuevo real
+        if firma_actual != st.session_state.hash_donaciones:
             st.session_state.donaciones_guardadas = donaciones.copy()
+            st.session_state.hash_donaciones = firma_actual
         else:
+            # Si Google devuelve lo mismo, usamos la versión guardada
+            donaciones = st.session_state.donaciones_guardadas.copy()
+
+        # Control anti-retroceso adicional por longitud
+        if len(donaciones) < len(st.session_state.donaciones_guardadas):
             donaciones = st.session_state.donaciones_guardadas.copy()
 
     return donaciones, metas
@@ -203,7 +237,7 @@ if "Timestamp" in donaciones.columns:
 elif "timestamp" in donaciones.columns:
     donaciones.rename(columns={"timestamp": "fecha_hora"}, inplace=True)
 
-# ✅ CRÍTICO: Solo usar "Contacto (opcional)", NUNCA "Donante"
+# Solo usar "Contacto (opcional)", NUNCA "Donante"
 if "Contacto (opcional)" in donaciones.columns:
     donaciones["donante_publico"] = donaciones["Contacto (opcional)"].fillna("").astype(str).str.strip()
 else:
@@ -239,7 +273,6 @@ hay_nueva_donacion = False
 
 if "fecha_hora" in donaciones.columns:
     try:
-        # ✅ HACER PARSE MÁS FLEXIBLE
         donaciones["fecha_hora"] = pd.to_datetime(
             donaciones["fecha_hora"].astype(str).str.strip(),
             dayfirst=True,
@@ -249,14 +282,11 @@ if "fecha_hora" in donaciones.columns:
         donaciones_validas = donaciones.dropna(subset=["fecha_hora"])
 
         if len(donaciones_validas) > 0:
-            # ✅ ORDEN ESTABLE
             donaciones_validas = donaciones_validas.sort_values("fecha_hora", ascending=False)
             fila_ultima = donaciones_validas.iloc[0]
 
-            # Generar ID único de la última donación
             id_actual = generar_id_donacion(fila_ultima)
 
-            # ✅ DETECCIÓN DE NUEVA DONACIÓN
             if st.session_state.ultima_donacion_id is None:
                 st.session_state.ultima_donacion_id = id_actual
                 st.session_state.mostrar_confeti = False
@@ -301,15 +331,12 @@ donado_por_med = donaciones_largo.groupby("medicamento", as_index=False)["cantid
 metas_temp = metas.copy()
 metas_temp["medicamento_lower"] = metas_temp["medicamento"].str.lower()
 
-# Crear diccionario para mapear nombres
 map_medicamentos = {}
 for med in lista_medicamentos:
     map_medicamentos[med.lower()] = med
 
-# Normalizar nombres en donado_por_med
 donado_por_med["medicamento_lower"] = donado_por_med["medicamento"].str.lower()
 
-# Merge
 avance = metas_temp.merge(donado_por_med, on="medicamento_lower", how="left", suffixes=("", "_don"))
 avance["cantidad"] = avance["cantidad"].fillna(0)
 
@@ -332,22 +359,25 @@ fecha_hoy = datetime.now().strftime("%d de %B de %Y")
 # PALETA DE COLORES PREMIUM HEALTHTECH
 # ==============================
 COLORES_MEDICAMENTOS = [
-    "#00D4FF",  # Cyan eléctrico
-    "#FF3D71",  # Rosa neón
-    "#00FF9F",  # Verde esmeralda
-    "#FFB800",  # Dorado brillante
-    "#B24BF3",  # Púrpura vibrante
-    "#FF6B35",  # Naranja cálido
+    "#00D4FF",
+    "#FF3D71",
+    "#00FF9F",
+    "#FFB800",
+    "#B24BF3",
+    "#FF6B35",
 ]
 
 
 # ==============================
-# ✅ IMÁGENES DE MEDICAMENTOS - URLs VERIFICADAS MANUALMENTE
+# IMÁGENES DE MEDICAMENTOS - URLs VERIFICADAS
 # ==============================
 IMG_MAP = {
     "multivitaminas (gotas)": "https://img.icons8.com/?size=100&id=BayY6C34iXTA&format=png&color=000000",
     "vitaminas c (gotas)": "https://img.icons8.com/?size=100&id=p514QFRInGPV&format=png&color=000000",
-    "vitamina a y d2 (gotas)": "https://img.icons8.com/?size=100&id=56345&format=png&color=000000g",
+
+    # ✅ CORREGIDO: QUITÉ LA "g" FINAL
+    "vitamina a y d2 (gotas)": "https://img.icons8.com/?size=100&id=56345&format=png&color=000000",
+
     "vitamina d2 forte (gotas)": "https://img.icons8.com/?size=100&id=aRMbtEpJbrOj&format=png&color=000000",
     "vitamina b (gotas)": "https://img.icons8.com/?size=100&id=2t4G6lB9hX4X&format=png&color=000000",
     "fumarato ferroso en suspensión": "https://img.icons8.com/?size=100&id=10XEPhqyfdJh&format=png&color=000000",
@@ -413,17 +443,13 @@ for _, r in avance.iterrows():
                 <div class="image-glow" style="background: {color_main}30;"></div>
                 
                 <div class="img-wrapper">
-                    <!-- Imagen base gris -->
                     <img src="{img_url}" class="img-base"/>
                     
-                    <!-- Contenedor de llenado -->
                     <div class="img-fill-container" style="height: {pct_bar}%;">
-
                         <img src="{img_url}" class="img-colored" 
                              style="filter: drop-shadow(0 0 12px {color_main}) brightness(1.2);"/>
                     </div>
                     
-                    <!-- Efecto de brillo -->
                     <div class="img-shimmer"></div>
                 </div>
             </div>
@@ -1219,7 +1245,6 @@ body::after {{
     const mostrarConfeti = {str(st.session_state.mostrar_confeti).lower()};
     
     if(mostrarConfeti) {{
-        // Celebración por nueva donación
         confetti({{
             particleCount: 200,
             spread: 120,
@@ -1254,4 +1279,5 @@ body::after {{
 """
 
 components.html(html, height=1400, scrolling=True)
+
 

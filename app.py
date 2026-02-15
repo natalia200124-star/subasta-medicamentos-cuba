@@ -4,6 +4,7 @@ from datetime import datetime
 import streamlit.components.v1 as components
 from streamlit_autorefresh import st_autorefresh
 import time
+import hashlib
 
 # ==============================
 # CONFIGURACIÓN PRINCIPAL
@@ -17,16 +18,12 @@ st.set_page_config(
 # ==============================
 # AUTO-REFRESH CADA 5 SEGUNDOS
 # ==============================
-st_autorefresh(interval=5000, key="datarefresh")
+count = st_autorefresh(interval=5000, key="datarefresh")
 
 
 # ==============================
 # LINKS CSV CON ANTI-CACHÉ
 # ==============================
-# ✅ SOLUCIÓN AL PROBLEMA DE CACHÉ:
-# Agregamos un timestamp único a cada URL para forzar que el navegador
-# NO use datos cacheados y siempre descargue la versión más reciente
-
 def get_csv_url_with_timestamp(base_url):
     """Agrega un timestamp único a la URL para evitar caché del navegador"""
     timestamp = int(time.time() * 1000)  # Timestamp en milisegundos
@@ -37,14 +34,28 @@ def get_csv_url_with_timestamp(base_url):
 CSV_BASE_DONACIONES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSQ-JoPi55tEnwRnP_SyYy5gawWPJoQaQ0jI4PLgDpA4CcEdKjSb2IFftcc475zBr5Ou34BTrSdZ8v9/pub?gid=1709067163&single=true&output=csv"
 CSV_BASE_METAS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSQ-JoPi55tEnwRnP_SyYy5gawWPJoQaQ0jI4PLgDpA4CcEdKjSb2IFftcc475zBr5Ou34BTrSdZ8v9/pub?gid=1531001200&single=true&output=csv"
 
-# Generar URLs únicas en cada carga
-CSV_DONACIONES = get_csv_url_with_timestamp(CSV_BASE_DONACIONES)
-CSV_METAS = get_csv_url_with_timestamp(CSV_BASE_METAS)
+
+# ==============================
+# INICIALIZAR SESSION STATE
+# ==============================
+if 'ultima_donacion_id' not in st.session_state:
+    st.session_state.ultima_donacion_id = None
+if 'mostrar_confeti' not in st.session_state:
+    st.session_state.mostrar_confeti = False
 
 
 # ==============================
 # FUNCIONES
 # ==============================
+def generar_id_donacion(fila):
+    """Genera un ID único para una donación basado en su contenido"""
+    contenido = f"{fila.get('fecha_hora', '')}{fila.get('donante_publico', '')}"
+    for col in fila.index:
+        if col not in ['fecha_hora', 'donante_publico', 'Donante', 'Contacto (opcional)']:
+            contenido += str(fila[col])
+    return hashlib.md5(contenido.encode()).hexdigest()
+
+
 def cargar_datos():
     """
     Carga datos SIN CACHÉ - Siempre datos frescos
@@ -203,11 +214,12 @@ for med in lista_medicamentos:
 
 
 # ==============================
-# ÚLTIMA DONACIÓN - SOLO CONTACTO PÚBLICO
+# PROCESAMIENTO DE FECHAS Y DETECCIÓN DE NUEVA DONACIÓN
 # ==============================
 ultimo_donante = "Donante anónimo"
 ultima_hora = ""
 ultimo_monto = 0
+hay_nueva_donacion = False
 
 if "fecha_hora" in donaciones.columns:
     try:
@@ -217,6 +229,23 @@ if "fecha_hora" in donaciones.columns:
         if len(donaciones_validas) > 0:
             donaciones_validas = donaciones_validas.sort_values("fecha_hora", ascending=False)
             fila_ultima = donaciones_validas.iloc[0]
+            
+            # Generar ID único de la última donación
+            id_actual = generar_id_donacion(fila_ultima)
+            
+            # ✅ DETECCIÓN DE NUEVA DONACIÓN
+            if st.session_state.ultima_donacion_id is None:
+                # Primera carga - no mostrar confeti
+                st.session_state.ultima_donacion_id = id_actual
+                st.session_state.mostrar_confeti = False
+            elif st.session_state.ultima_donacion_id != id_actual:
+                # ¡Nueva donación detectada!
+                st.session_state.ultima_donacion_id = id_actual
+                st.session_state.mostrar_confeti = True
+                hay_nueva_donacion = True
+            else:
+                # Misma donación - no mostrar confeti
+                st.session_state.mostrar_confeti = False
             
             # ✅ USAR SOLO CONTACTO PÚBLICO
             ultimo_donante = fila_ultima["donante_publico"]
@@ -295,31 +324,15 @@ COLORES_MEDICAMENTOS = [
 # ==============================
 # ✅ IMÁGENES DE MEDICAMENTOS - URLs VERIFICADAS MANUALMENTE
 # ==============================
-# 🎨 CAMBIA ESTAS URLs POR LAS QUE QUIERAS
-# Busca imágenes en: https://www.flaticon.com
-# Copia la URL de la imagen y pégala aquí
-
 IMG_MAP = {
-    # 🧴 Multivitaminas - Frasco de medicina con etiqueta
     "multivitaminas (gotas)": "https://cdn-icons-png.flaticon.com/512/2913/2913120.png",
-    
-    # 💊 Vitaminas C - Pastillas en blister
     "vitaminas c (gotas)": "https://cdn-icons-png.flaticon.com/512/2785/2785457.png",
-    
-    # 🍶 Vitamina A y D2 - Jarabe líquido
     "vitamina a y d2 (gotas)": "https://cdn-icons-png.flaticon.com/512/2785/2785566.png",
-    
-    # 💧 Vitamina D2 forte - Frasco con gotero
     "vitamina d2 forte (gotas)": "https://cdn-icons-png.flaticon.com/512/3774/3774239.png",
-    
-    # 💊 Vitamina B - Cápsula de medicina
     "vitamina b (gotas)": "https://cdn-icons-png.flaticon.com/512/2966/2966327.png",
-    
-    # 🧴 Fumarato ferroso - Botella de suspensión
     "fumarato ferroso en suspensión": "https://cdn-icons-png.flaticon.com/512/2785/2785629.png",
 }
 
-# Imagen por defecto si no hay coincidencia
 DEFAULT_IMG = "https://cdn-icons-png.flaticon.com/512/2966/2966334.png"
 
 
@@ -341,9 +354,6 @@ else:
     critico_faltante = 0
     mas_av_nombre = "N/A"
     mas_av_pct = 0
-
-# ✅ CONFETI INTELIGENTE - Solo si algún medicamento está >= 95%
-hay_confeti = any(float(r["porcentaje"]) >= 95 for _, r in avance.iterrows())
 
 
 # ==============================
@@ -1184,11 +1194,11 @@ body::after {{
 </div>
 
 <script>
-    // ✅ CONFETI CORREGIDO - Se dispara cuando algún medicamento está >= 95%
-    const hayConfeti = {str(hay_confeti).lower()};
+    // ✅ CONFETI INTELIGENTE - Solo se activa cuando hay NUEVA donación
+    const mostrarConfeti = {str(st.session_state.mostrar_confeti).lower()};
     
-    if(hayConfeti) {{
-        // Celebración
+    if(mostrarConfeti) {{
+        // Celebración por nueva donación
         confetti({{
             particleCount: 200,
             spread: 120,

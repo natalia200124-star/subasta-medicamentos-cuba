@@ -5,7 +5,6 @@ import streamlit.components.v1 as components
 from streamlit_autorefresh import st_autorefresh
 import time
 import hashlib
-import requests
 
 # ✅ NUEVO: lectura más rápida y sin caché real
 import requests

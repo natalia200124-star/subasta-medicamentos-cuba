@@ -347,7 +347,7 @@ COLORES_MEDICAMENTOS = [
 IMG_MAP = {
     "multivitaminas (gotas)": "https://img.icons8.com/?size=100&id=BayY6C34iXTA&format=png&color=000000",
     "vitaminas c (gotas)": "https://img.icons8.com/?size=100&id=p514QFRInGPV&format=png&color=000000",
-    "vitamina a y d2 (gotas)": "https://img.icons8.com/?size=100&id=56345&format=png&color=000000g",
+    "vitamina a y d2 (gotas)": "https://img.icons8.com/?size=100&id=56345&format=png&color=000000",
     "vitamina d2 forte (gotas)": "https://img.icons8.com/?size=100&id=aRMbtEpJbrOj&format=png&color=000000",
     "vitamina b (gotas)": "https://img.icons8.com/?size=100&id=2t4G6lB9hX4X&format=png&color=000000",
     "fumarato ferroso en suspensión": "https://img.icons8.com/?size=100&id=10XEPhqyfdJh&format=png&color=000000",

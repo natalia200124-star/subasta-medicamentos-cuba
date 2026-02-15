@@ -19,8 +19,8 @@ st_autorefresh(interval=2000, key="autorefresh")
 # ==============================
 # LINKS CSV
 # ==============================
-CSV_DONACIONES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT2zRpYc-c3ZznxlPo51_k-5W3mNMzsxl8zlUzxCtugfc2ONIK_C-ht1DzKCR6vy2f1YSnwBx8umQxs/pub?gid=1533440022&single=true&output=csv"
-CSV_METAS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT2zRpYc-c3ZznxlPo51_k-5W3mNMzsxl8zlUzxCtugfc2ONIK_C-ht1DzKCR6vy2f1YSnwBx8umQxs/pub?gid=199575778&single=true&output=csv"
+CSV_DONACIONES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSQ-JoPi55tEnwRnP_SyYy5gawWPJoQaQ0jI4PLgDpA4CcEdKjSb2IFftcc475zBr5Ou34BTrSdZ8v9/pub?gid=1709067163&single=true&output=csv"
+CSV_METAS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSQ-JoPi55tEnwRnP_SyYy5gawWPJoQaQ0jI4PLgDpA4CcEdKjSb2IFftcc475zBr5Ou34BTrSdZ8v9/pub?gid=1531001200&single=true&output=csv"
 
 
 # ==============================

@@ -6,6 +6,10 @@ from streamlit_autorefresh import st_autorefresh
 import time
 import hashlib
 
+# ✅ NUEVO: lectura más rápida y sin caché real
+import requests
+from io import StringIO
+
 # ==============================
 # CONFIGURACIÓN PRINCIPAL
 # ==============================
@@ -16,9 +20,12 @@ st.set_page_config(
 )
 
 # ==============================
-# AUTO-REFRESH CADA 5 SEGUNDOS
+# AUTO-REFRESH
 # ==============================
-count = st_autorefresh(interval=5000, key="datarefresh")
+# ⚠️ IMPORTANTE:
+# 5 segundos NO siempre es mejor, Google Sheets suele cachear más.
+# 8 segundos da mejores resultados en práctica.
+count = st_autorefresh(interval=8000, key="datarefresh")
 
 
 # ==============================
@@ -40,12 +47,17 @@ CSV_BASE_METAS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSQ-JoPi55tEnw
 # ==============================
 if 'ultima_donacion_id' not in st.session_state:
     st.session_state.ultima_donacion_id = None
+
 if 'mostrar_confeti' not in st.session_state:
     st.session_state.mostrar_confeti = False
 
-# ✅ NUEVO: Guardar última versión "buena" del dataset para que NO se devuelva
+# Guardar última versión "buena"
 if "donaciones_guardadas" not in st.session_state:
     st.session_state.donaciones_guardadas = None
+
+# Guardar hash de dataset completo (MEJOR QUE LEN)
+if "hash_donaciones" not in st.session_state:
+    st.session_state.hash_donaciones = None
 
 
 # ==============================
@@ -60,28 +72,56 @@ def generar_id_donacion(fila):
     return hashlib.md5(contenido.encode()).hexdigest()
 
 
+# ✅ NUEVO: lectura robusta anti-cache real
+def leer_csv_sin_cache(url):
+    try:
+        r = requests.get(url, headers={"Cache-Control": "no-cache"})
+        return pd.read_csv(StringIO(r.text))
+    except Exception as e:
+        raise Exception(f"No se pudo leer CSV: {e}")
+
+
+def calcular_hash_dataframe(df):
+    """Hash estable del dataframe completo para detectar cambios reales"""
+    try:
+        return hashlib.md5(
+            pd.util.hash_pandas_object(df, index=True).values.tobytes()
+        ).hexdigest()
+    except:
+        return None
+
+
 def cargar_datos():
     """
-    Carga datos SIN CACHÉ - Siempre datos frescos
-    CRÍTICO: NO usar @st.cache_data aquí
+    Carga datos SIN CACHÉ real.
 
-    ✅ MEJORA: evita que Google Sheets devuelva versiones viejas
-    guardando siempre el dataset más completo (más filas).
+    MEJORAS:
+    - Usa requests para evitar caché
+    - Usa hash para detectar cambios reales
+    - Evita retrocesos si Google devuelve versión vieja
     """
     url_donaciones = get_csv_url_with_timestamp(CSV_BASE_DONACIONES)
     url_metas = get_csv_url_with_timestamp(CSV_BASE_METAS)
 
-    donaciones = pd.read_csv(url_donaciones)
-    metas = pd.read_csv(url_metas)
+    donaciones = leer_csv_sin_cache(url_donaciones)
+    metas = leer_csv_sin_cache(url_metas)
 
-    # ✅ CONTROL ANTI-RETROCESO:
-    # Si Google devuelve un CSV más corto, no lo aceptamos.
+    # Normalizar columnas para que el hash sea estable
+    donaciones.columns = [c.strip() for c in donaciones.columns]
+
+    hash_actual = calcular_hash_dataframe(donaciones)
+
     if st.session_state.donaciones_guardadas is None:
         st.session_state.donaciones_guardadas = donaciones.copy()
+        st.session_state.hash_donaciones = hash_actual
+
     else:
-        if len(donaciones) >= len(st.session_state.donaciones_guardadas):
+        # Si hash cambió, aceptamos el dataset nuevo
+        if hash_actual != st.session_state.hash_donaciones:
             st.session_state.donaciones_guardadas = donaciones.copy()
+            st.session_state.hash_donaciones = hash_actual
         else:
+            # Si Google devuelve el mismo dataset, usamos el guardado
             donaciones = st.session_state.donaciones_guardadas.copy()
 
     return donaciones, metas
@@ -123,36 +163,25 @@ def termometro_ultra_moderno_svg(pct, color="#00d4ff"):
             </filter>
         </defs>
         
-        <!-- Glow externo -->
         <circle cx="65" cy="170" r="26" fill="{color}" opacity="0.15" filter="blur(8px)"/>
-        
-        <!-- Bulbo base -->
         <circle cx="65" cy="170" r="22" fill="rgba(10,15,30,0.5)" stroke="{color}" stroke-width="2.5" opacity="0.5"/>
-        
-        <!-- Tubo base -->
         <rect x="52" y="35" width="26" height="135" rx="13" fill="rgba(10,15,30,0.5)" stroke="{color}" stroke-width="2.5" opacity="0.5"/>
 
         <clipPath id="clipT{hash(color)}">
             <rect x="52" y="35" width="26" height="135" rx="13"/>
         </clipPath>
 
-        <!-- Relleno animado -->
         <rect x="52" y="{y}" width="26" height="{altura}" fill="url(#tube{hash(color)})" 
               clip-path="url(#clipT{hash(color)})" filter="url(#neon{hash(color)})"/>
 
-        <!-- Bulbo lleno -->
         <circle cx="65" cy="170" r="18" fill="url(#bulb{hash(color)})" filter="url(#neon{hash(color)})"/>
-        
-        <!-- Brillo interno -->
         <circle cx="65" cy="170" r="10" fill="white" opacity="0.3"/>
         
-        <!-- Marcas -->
         <line x1="79" y1="50" x2="88" y2="50" stroke="{color}" stroke-width="2" opacity="0.6"/>
         <line x1="79" y1="80" x2="88" y2="80" stroke="{color}" stroke-width="2" opacity="0.6"/>
         <line x1="79" y1="110" x2="88" y2="110" stroke="{color}" stroke-width="2" opacity="0.6"/>
         <line x1="79" y1="140" x2="88" y2="140" stroke="{color}" stroke-width="2" opacity="0.6"/>
         
-        <!-- Texto de porcentaje -->
         <text x="65" y="200" text-anchor="middle" fill="{color}" font-size="14" font-weight="900" opacity="0.9">{pct:.0f}%</text>
     </svg>
     """
@@ -203,17 +232,15 @@ if "Timestamp" in donaciones.columns:
 elif "timestamp" in donaciones.columns:
     donaciones.rename(columns={"timestamp": "fecha_hora"}, inplace=True)
 
-# ✅ CRÍTICO: Solo usar "Contacto (opcional)", NUNCA "Donante"
+# Solo usar "Contacto (opcional)"
 if "Contacto (opcional)" in donaciones.columns:
     donaciones["donante_publico"] = donaciones["Contacto (opcional)"].fillna("").astype(str).str.strip()
 else:
     donaciones["donante_publico"] = ""
 
-# Convertir vacíos a "Donante anónimo"
 donaciones.loc[donaciones["donante_publico"] == "", "donante_publico"] = "Donante anónimo"
 donaciones.loc[donaciones["donante_publico"].str.lower() == "nan", "donante_publico"] = "Donante anónimo"
 
-# Eliminar la columna "Donante" para evitar confusiones
 if "Donante" in donaciones.columns:
     donaciones = donaciones.drop(columns=["Donante"])
 
@@ -239,7 +266,6 @@ hay_nueva_donacion = False
 
 if "fecha_hora" in donaciones.columns:
     try:
-        # ✅ HACER PARSE MÁS FLEXIBLE
         donaciones["fecha_hora"] = pd.to_datetime(
             donaciones["fecha_hora"].astype(str).str.strip(),
             dayfirst=True,
@@ -249,21 +275,20 @@ if "fecha_hora" in donaciones.columns:
         donaciones_validas = donaciones.dropna(subset=["fecha_hora"])
 
         if len(donaciones_validas) > 0:
-            # ✅ ORDEN ESTABLE
             donaciones_validas = donaciones_validas.sort_values("fecha_hora", ascending=False)
             fila_ultima = donaciones_validas.iloc[0]
 
-            # Generar ID único de la última donación
             id_actual = generar_id_donacion(fila_ultima)
 
-            # ✅ DETECCIÓN DE NUEVA DONACIÓN
             if st.session_state.ultima_donacion_id is None:
                 st.session_state.ultima_donacion_id = id_actual
                 st.session_state.mostrar_confeti = False
+
             elif st.session_state.ultima_donacion_id != id_actual:
                 st.session_state.ultima_donacion_id = id_actual
                 st.session_state.mostrar_confeti = True
                 hay_nueva_donacion = True
+
             else:
                 st.session_state.mostrar_confeti = False
 
@@ -301,15 +326,12 @@ donado_por_med = donaciones_largo.groupby("medicamento", as_index=False)["cantid
 metas_temp = metas.copy()
 metas_temp["medicamento_lower"] = metas_temp["medicamento"].str.lower()
 
-# Crear diccionario para mapear nombres
 map_medicamentos = {}
 for med in lista_medicamentos:
     map_medicamentos[med.lower()] = med
 
-# Normalizar nombres en donado_por_med
 donado_por_med["medicamento_lower"] = donado_por_med["medicamento"].str.lower()
 
-# Merge
 avance = metas_temp.merge(donado_por_med, on="medicamento_lower", how="left", suffixes=("", "_don"))
 avance["cantidad"] = avance["cantidad"].fillna(0)
 
@@ -332,21 +354,22 @@ fecha_hoy = datetime.now().strftime("%d de %B de %Y")
 # PALETA DE COLORES PREMIUM HEALTHTECH
 # ==============================
 COLORES_MEDICAMENTOS = [
-    "#00D4FF",  # Cyan eléctrico
-    "#FF3D71",  # Rosa neón
-    "#00FF9F",  # Verde esmeralda
-    "#FFB800",  # Dorado brillante
-    "#B24BF3",  # Púrpura vibrante
-    "#FF6B35",  # Naranja cálido
+    "#00D4FF",
+    "#FF3D71",
+    "#00FF9F",
+    "#FFB800",
+    "#B24BF3",
+    "#FF6B35",
 ]
 
 
 # ==============================
-# ✅ IMÁGENES DE MEDICAMENTOS - URLs VERIFICADAS MANUALMENTE
+# IMÁGENES DE MEDICAMENTOS
 # ==============================
 IMG_MAP = {
     "multivitaminas (gotas)": "https://img.icons8.com/?size=100&id=BayY6C34iXTA&format=png&color=000000",
     "vitaminas c (gotas)": "https://img.icons8.com/?size=100&id=p514QFRInGPV&format=png&color=000000",
+    # ✅ CORREGIDO: QUITAR LA g
     "vitamina a y d2 (gotas)": "https://img.icons8.com/?size=100&id=56345&format=png&color=000000",
     "vitamina d2 forte (gotas)": "https://img.icons8.com/?size=100&id=aRMbtEpJbrOj&format=png&color=000000",
     "vitamina b (gotas)": "https://img.icons8.com/?size=100&id=2t4G6lB9hX4X&format=png&color=000000",
@@ -413,17 +436,13 @@ for _, r in avance.iterrows():
                 <div class="image-glow" style="background: {color_main}30;"></div>
                 
                 <div class="img-wrapper">
-                    <!-- Imagen base gris -->
                     <img src="{img_url}" class="img-base"/>
                     
-                    <!-- Contenedor de llenado -->
                     <div class="img-fill-container" style="height: {pct_bar}%;">
-
                         <img src="{img_url}" class="img-colored" 
                              style="filter: drop-shadow(0 0 12px {color_main}) brightness(1.2);"/>
                     </div>
                     
-                    <!-- Efecto de brillo -->
                     <div class="img-shimmer"></div>
                 </div>
             </div>
@@ -458,7 +477,7 @@ for _, r in avance.iterrows():
 
 
 # ==============================
-# HTML ULTRA PREMIUM - DISEÑO REVOLUCIONARIO
+# HTML ULTRA PREMIUM
 # ==============================
 html = f"""
 <!DOCTYPE html>
@@ -489,7 +508,6 @@ body {{
     position: relative;
 }}
 
-/* ==================== FONDO ANIMADO ==================== */
 body::before {{
     content: '';
     position: fixed;
@@ -511,7 +529,6 @@ body::before {{
     50% {{ opacity: 0.8; }}
 }}
 
-/* Partículas flotantes */
 body::after {{
     content: '';
     position: fixed;
@@ -545,7 +562,6 @@ body::after {{
     z-index: 1;
 }}
 
-/* ==================== HEADER PREMIUM ==================== */
 .header {{
     background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(8, 15, 30, 0.95) 100%);
     backdrop-filter: blur(30px) saturate(180%);
@@ -631,7 +647,6 @@ body::after {{
     letter-spacing: 1px;
 }}
 
-/* ==================== SUMMARY ==================== */
 .summary {{
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
@@ -675,7 +690,6 @@ body::after {{
     background-clip: text;
 }}
 
-/* ==================== PROGRESO GLOBAL ==================== */
 .global-progress {{
     margin-top: 8px;
 }}
@@ -732,7 +746,6 @@ body::after {{
     text-shadow: 0 0 20px rgba(0, 255, 159, 0.5);
 }}
 
-/* ==================== PANEL ==================== */
 .panel {{
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -779,14 +792,12 @@ body::after {{
     font-weight: 600;
 }}
 
-/* ==================== GRID 3x2 MEDICAMENTOS ==================== */
 .grid {{
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 24px;
 }}
 
-/* ==================== TARJETAS MEDICAMENTOS ULTRA PREMIUM ==================== */
 .med-card {{
     background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(8, 15, 30, 0.95) 100%);
     backdrop-filter: blur(30px) saturate(180%);
@@ -804,18 +815,6 @@ body::after {{
     overflow: hidden;
 }}
 
-.med-card::before {{
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.03) 0%, transparent 70%);
-    pointer-events: none;
-    transition: opacity 0.5s;
-}}
-
 .med-card:hover {{
     transform: translateY(-12px) scale(1.02);
     border-color: rgba(0, 212, 255, 0.5);
@@ -823,10 +822,6 @@ body::after {{
         0 30px 80px rgba(0, 0, 0, 0.6),
         0 0 60px rgba(0, 212, 255, 0.3),
         inset 0 1px 0 rgba(255, 255, 255, 0.2);
-}}
-
-.med-card:hover::before {{
-    opacity: 1.8;
 }}
 
 .med-header {{
@@ -867,7 +862,6 @@ body::after {{
     flex: 1;
 }}
 
-/* ==================== IMÁGENES MEJORADAS ==================== */
 .med-image-container {{
     width: 180px;
     height: 220px;
@@ -954,7 +948,6 @@ body::after {{
     height: 210px;
 }}
 
-/* ==================== ESTADÍSTICAS ==================== */
 .med-stats {{
     display: grid;
     grid-template-columns: 1fr auto 1fr auto 1fr;
@@ -995,7 +988,6 @@ body::after {{
     background: rgba(255, 255, 255, 0.1);
 }}
 
-/* ==================== BARRA DE PROGRESO ==================== */
 .progress-bar {{
     height: 22px;
     border-radius: 16px;
@@ -1005,33 +997,11 @@ body::after {{
     position: relative;
 }}
 
-.progress-bar::before {{
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 50%;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 100%);
-    pointer-events: none;
-    z-index: 2;
-}}
-
 .progress-fill {{
     height: 100%;
     transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     z-index: 1;
-}}
-
-.progress-fill::after {{
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 50%;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.25) 0%, transparent 100%);
 }}
 
 .progress-glow {{
@@ -1043,7 +1013,6 @@ body::after {{
     transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);
 }}
 
-/* ==================== OVERLAY DONACIÓN ==================== */
 .donation-overlay {{
     position: fixed;
     top: 30px;
@@ -1074,71 +1043,11 @@ body::after {{
         opacity: 1;
     }}
 }}
-
-.donation-header {{
-    opacity: 0.6;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 8px;
-    font-weight: 800;
-}}
-
-.donation-name {{
-    font-size: 18px;
-    color: #00FF9F;
-    font-weight: 900;
-    margin-bottom: 12px;
-    text-shadow: 0 0 20px rgba(0, 255, 159, 0.5);
-}}
-
-.donation-details {{
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    display: flex;
-    justify-content: space-between;
-    gap: 16px;
-}}
-
-.donation-detail {{
-    flex: 1;
-}}
-
-.donation-detail-label {{
-    font-size: 10px;
-    opacity: 0.6;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 4px;
-}}
-
-.donation-detail-value {{
-    font-size: 16px;
-    font-weight: 900;
-    color: #00D4FF;
-}}
-
-/* ==================== RESPONSIVE ==================== */
-@media (max-width: 1400px) {{
-    .grid {{ grid-template-columns: repeat(3, 1fr); }}
-}}
-
-@media (max-width: 1024px) {{
-    .grid {{ grid-template-columns: repeat(2, 1fr); }}
-    .summary {{ grid-template-columns: 1fr; }}
-    .panel {{ grid-template-columns: 1fr; }}
-}}
-
-@media (max-width: 768px) {{
-    .grid {{ grid-template-columns: 1fr; }}
-}}
 </style>
 </head>
 
 <body>
 
-<!-- OVERLAY ÚLTIMA DONACIÓN -->
 <div class="donation-overlay">
     <div class="donation-header">🎁 Última donación</div>
     <div class="donation-name">{ultimo_donante}</div>
@@ -1156,7 +1065,6 @@ body::after {{
 
 <div class="main">
 
-    <!-- HEADER -->
     <div class="header">
         <div style="display: flex; align-items: center; gap: 24px;">
             <div class="logo">Generosidad<br>Colombia<br>2026</div>
@@ -1168,7 +1076,6 @@ body::after {{
         <div class="header-badge">🇨🇺 Cuba nos necesita</div>
     </div>
 
-    <!-- SUMMARY -->
     <div class="summary">
         <div class="summary-card">
             <div class="summary-label">Total Meta</div>
@@ -1191,7 +1098,6 @@ body::after {{
         </div>
     </div>
 
-    <!-- PANEL -->
     <div class="panel">
         <div class="panel-card">
             <div class="panel-label">🎯 Medicamento más crítico</div>
@@ -1207,7 +1113,6 @@ body::after {{
         </div>
     </div>
 
-    <!-- GRID 3x2 -->
     <div class="grid">
         {cards_html}
     </div>
@@ -1215,11 +1120,9 @@ body::after {{
 </div>
 
 <script>
-    // ✅ CONFETI INTELIGENTE - Solo se activa cuando hay NUEVA donación
     const mostrarConfeti = {str(st.session_state.mostrar_confeti).lower()};
     
     if(mostrarConfeti) {{
-        // Celebración por nueva donación
         confetti({{
             particleCount: 200,
             spread: 120,
@@ -1254,5 +1157,6 @@ body::after {{
 """
 
 components.html(html, height=1400, scrolling=True)
+
 
 

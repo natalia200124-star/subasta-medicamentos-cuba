@@ -18,24 +18,17 @@ st.set_page_config(
 )
 
 # ==============================
-# FUNCIONES
+# AUTO-REFRESH SIN OSCURECER PANTALLA
 # ==============================
-def cargar_datos():
-    # todo tu código de carga aquí...
-    pass
+# Intervalo en milisegundos (8000 = 8 segundos)
+st_autorefresh(interval=8000, key="datarefresh")
 
-# ==============================
-# CONTENEDOR DE ACTUALIZACIÓN
-# ==============================
-placeholder = st.empty()
-
-# Loop para refrescar datos automáticamente sin oscurecer pantalla
-while True:
-    with placeholder.container():
-        donaciones, metas = cargar_datos()  # <-- ya está definida arriba
-        # todo tu código de renderizado aquí (cards, tablas, gráficos, etc.)
-    
-    time.sleep(8)  # 8 segundos entre actualizaciones
+# Cargar datos
+try:
+    donaciones, metas = cargar_datos()  # <-- la función ya debe estar definida arriba
+except Exception as e:
+    st.error(f"❌ Error al cargar datos: {str(e)}")
+    st.stop()
 
 # ==============================
 # CARGA DE DATOS DESDE API (APPS SCRIPT)

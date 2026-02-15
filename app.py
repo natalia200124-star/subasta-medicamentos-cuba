@@ -20,7 +20,7 @@ st.set_page_config(
 # ==============================
 # AUTO-REFRESH
 # ==============================
-count = st_autorefresh(interval=8000, key="datarefresh")
+count = st_autorefresh(interval=20000, key="datarefresh")
 
 # ==============================
 # CARGA DE DATOS DESDE API (APPS SCRIPT)

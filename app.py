@@ -8,7 +8,7 @@ from streamlit_autorefresh import st_autorefresh
 # CONFIGURACIÓN PRINCIPAL
 # ==============================
 st.set_page_config(
-    page_title="Círculo de Generación 2026 - Dashboard",
+    page_title="Círculo de Generocidad 2026 - Dashboard",
     page_icon="🏥",
     layout="wide"
 )
@@ -1085,9 +1085,9 @@ body::after {{
     <!-- HEADER -->
     <div class="header">
         <div style="display: flex; align-items: center; gap: 24px;">
-            <div class="logo">Generosidad<br>Colombia<br>2025</div>
+            <div class="logo">Generosidad<br>Colombia<br>2026</div>
             <div>
-                <div class="title">Círculo de Generación 2026</div>
+                <div class="title">Círculo de Generosidad 2026</div>
                 <div class="subtitle">{fecha_hoy}</div>
             </div>
         </div>

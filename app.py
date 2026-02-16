@@ -20,7 +20,7 @@ st.set_page_config(
 # ==============================
 # AUTO-REFRESH
 # ==============================
-count = st_autorefresh(interval=8000, key="datarefresh")
+count = st_autorefresh(interval=15000, key="datarefresh")
 
 # ==============================
 # CARGA DE DATOS DESDE API (APPS SCRIPT)
@@ -143,7 +143,6 @@ lista_medicamentos = metas["medicamento"].tolist()
 # ==============================
 # NORMALIZACIÓN DONACIONES
 # ==============================
-# Manejar "Marca temporal"
 if "Marca temporal" in donaciones.columns:
     donaciones.rename(columns={"Marca temporal": "fecha_hora"}, inplace=True)
 elif "Timestamp" in donaciones.columns:
@@ -162,7 +161,7 @@ else:
 donaciones.loc[donaciones["donante_publico"] == "", "donante_publico"] = "Donante anónimo"
 donaciones.loc[donaciones["donante_publico"].str.lower() == "nan", "donante_publico"] = "Donante anónimo"
 
-# Eliminar columna privada del donante
+# Eliminar columnas privadas del donante
 if "Nombre completo del donante (persona o entidad)" in donaciones.columns:
     donaciones = donaciones.drop(columns=["Nombre completo del donante (persona o entidad)"])
 if "Donante" in donaciones.columns:
@@ -445,7 +444,7 @@ body::after {{
 .main {{
     max-width: 1920px;
     margin: 0 auto;
-    padding: 30px;
+    padding: 15px;
     position: relative;
     z-index: 1;
 }}
@@ -456,12 +455,12 @@ body::after {{
     backdrop-filter: blur(30px) saturate(180%);
     -webkit-backdrop-filter: blur(30px) saturate(180%);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 28px;
-    padding: 32px 40px;
+    border-radius: 20px;
+    padding: 20px 25px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 30px;
+    margin-bottom: 15px;
     box-shadow: 
         0 20px 60px rgba(0, 0, 0, 0.5),
         0 0 80px rgba(0, 212, 255, 0.1),
@@ -540,16 +539,16 @@ body::after {{
 .summary {{
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
-    gap: 20px;
-    margin-bottom: 30px;
+    gap: 15px;
+    margin-bottom: 15px;
 }}
 
 .summary-card {{
     background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(8, 15, 30, 0.9) 100%);
     backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 24px;
-    padding: 28px;
+    border-radius: 18px;
+    padding: 18px;
     box-shadow: 
         0 15px 50px rgba(0, 0, 0, 0.4),
         inset 0 1px 0 rgba(255, 255, 255, 0.08);
@@ -641,16 +640,16 @@ body::after {{
 .panel {{
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 20px;
-    margin-bottom: 30px;
+    gap: 15px;
+    margin-bottom: 15px;
 }}
 
 .panel-card {{
     background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(8, 15, 30, 0.9) 100%);
     backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 24px;
-    padding: 24px;
+    border-radius: 18px;
+    padding: 16px;
     box-shadow: 
         0 15px 50px rgba(0, 0, 0, 0.4),
         inset 0 1px 0 rgba(255, 255, 255, 0.08);
@@ -688,7 +687,7 @@ body::after {{
 .grid {{
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 24px;
+    gap: 15px;
 }}
 
 /* ==================== TARJETAS MEDICAMENTOS ULTRA PREMIUM ==================== */
@@ -696,9 +695,9 @@ body::after {{
     background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(8, 15, 30, 0.95) 100%);
     backdrop-filter: blur(30px) saturate(180%);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 28px;
-    padding: 28px;
-    min-height: 580px;
+    border-radius: 20px;
+    padding: 18px;
+    min-height: 420px;
     display: flex;
     flex-direction: column;
     box-shadow: 
@@ -738,12 +737,12 @@ body::after {{
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 24px;
-    gap: 12px;
+    margin-bottom: 12px;
+    gap: 8px;
 }}
 
 .med-title {{
-    font-size: 18px;
+    font-size: 15px;
     font-weight: 900;
     background: linear-gradient(135deg, #FFFFFF 0%, #C5D9FF 100%);
     -webkit-background-clip: text;
@@ -754,12 +753,12 @@ body::after {{
 }}
 
 .med-badge {{
-    padding: 8px 16px;
-    border-radius: 12px;
-    font-size: 14px;
+    padding: 6px 12px;
+    border-radius: 10px;
+    font-size: 12px;
     font-weight: 900;
     text-align: center;
-    min-width: 70px;
+    min-width: 60px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }}
 
@@ -767,16 +766,16 @@ body::after {{
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 24px;
-    margin: 24px 0;
+    gap: 16px;
+    margin: 12px 0;
     flex: 1;
 }}
 
 /* ==================== IMÁGENES MEJORADAS ==================== */
 .med-image-container {{
-    width: 180px;
-    height: 220px;
-    border-radius: 24px;
+    width: 130px;
+    height: 160px;
+    border-radius: 18px;
     position: relative;
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
     border: 1px solid rgba(255, 255, 255, 0.08);
@@ -793,7 +792,7 @@ body::after {{
     position: absolute;
     width: 100%;
     height: 100%;
-    border-radius: 24px;
+    border-radius: 18px;
     filter: blur(30px);
     opacity: 0.4;
     z-index: 0;
@@ -801,15 +800,15 @@ body::after {{
 
 .img-wrapper {{
     position: relative;
-    width: 120px;
-    height: 120px;
+    width: 100px;
+    height: 100px;
     z-index: 1;
 }}
 
 .img-base {{
     position: absolute;
-    width: 120px;
-    height: 120px;
+    width: 100px;
+    height: 100px;
     filter: grayscale(100%) brightness(0.3);
     opacity: 0.4;
     z-index: 1;
@@ -819,7 +818,7 @@ body::after {{
     position: absolute;
     bottom: 0;
     left: 0;
-    width: 120px;
+    width: 100px;
     overflow: hidden;
     z-index: 2;
     transition: height 1.5s cubic-bezier(0.4, 0, 0.2, 1);
@@ -828,16 +827,16 @@ body::after {{
 .img-colored {{
     position: absolute;
     bottom: 0;
-    width: 120px;
-    height: 120px;
+    width: 100px;
+    height: 100px;
 }}
 
 .img-shimmer {{
     position: absolute;
     top: 0;
     left: 0;
-    width: 120px;
-    height: 120px;
+    width: 100px;
+    height: 100px;
     background: linear-gradient(135deg, 
         transparent 0%, 
         rgba(255, 255, 255, 0.1) 45%, 
@@ -855,8 +854,8 @@ body::after {{
 }}
 
 .med-thermo {{
-    width: 110px;
-    height: 210px;
+    width: 90px;
+    height: 160px;
 }}
 
 /* ==================== ESTADÍSTICAS ==================== */
@@ -864,11 +863,11 @@ body::after {{
     display: grid;
     grid-template-columns: 1fr auto 1fr auto 1fr;
     align-items: center;
-    padding: 20px;
+    padding: 12px;
     background: rgba(255, 255, 255, 0.02);
-    border-radius: 16px;
+    border-radius: 12px;
     border: 1px solid rgba(255, 255, 255, 0.05);
-    margin-bottom: 20px;
+    margin-bottom: 12px;
 }}
 
 .stat-item {{
@@ -876,16 +875,16 @@ body::after {{
 }}
 
 .stat-label {{
-    font-size: 11px;
+    font-size: 9px;
     color: rgba(255, 255, 255, 0.5);
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 6px;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
 }}
 
 .stat-value {{
-    font-size: 18px;
+    font-size: 14px;
     font-weight: 900;
     color: #FFFFFF;
 }}
@@ -896,7 +895,7 @@ body::after {{
 
 .stat-divider {{
     width: 1px;
-    height: 40px;
+    height: 30px;
     background: rgba(255, 255, 255, 0.1);
 }}
 
@@ -1070,8 +1069,7 @@ body::after {{
                 <div class="subtitle">{fecha_hoy}</div>
             </div>
         </div>
-        <div class="header-badge">🇨🇺 Cuba nos necesita</div>
-    </div>
+</div><div class="header-badge">Cuba nos necesita</div></div></div></div>
 
     <!-- SUMMARY -->
     <div class="summary">

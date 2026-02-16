@@ -249,17 +249,17 @@ COLORES_MEDICAMENTOS = [
 ]
 
 # ==============================
-# ✅ IMÁGENES DE MEDICAMENTOS - ACTUALIZADAS PARA LOS 4 ESPECÍFICOS
+# ✅ IMÁGENES DE MEDICAMENTOS - URLs CORREGIDAS VISIBLES
 # ==============================
 IMG_MAP = {
-    "multivitaminico pediatrico: pediavit zinc solucion oral en gotas": "https://img.icons8.com/?size=100&id=BayY6C34iXTA&format=png&color=000000",
-    "Multivitaminico pediatrico: PEDIAVIT ZINC Solucion oral en gotas": "https://img.icons8.com/?size=100&id=BayY6C34iXTA&format=png&color=000000",
-    "vitamina c: vita c en gotas": "https://img.icons8.com/?size=100&id=p514QFRInGPV&format=png&color=000000",
-    "Vitamina C: VITA C en gotas": "https://img.icons8.com/?size=100&id=p514QFRInGPV&format=png&color=000000",
-    "fumarato ferroso en suspensión": "https://img.icons8.com/?size=100&id=10XEPhqyfdJh&format=png&color=000000",
-    "Fumarato Ferroso en Suspensión": "https://img.icons8.com/?size=100&id=10XEPhqyfdJh&format=png&color=000000",
-    "vitamina d forte en gotas": "https://img.icons8.com/?size=100&id=aRMbtEpJbrOj&format=png&color=000000",
-    "Vitamina D Forte en gotas": "https://img.icons8.com/?size=100&id=aRMbtEpJbrOj&format=png&color=000000",
+    "multivitaminico pediatrico: pediavit zinc solucion oral en gotas": "https://cdn-icons-png.flaticon.com/512/3209/3209265.png",
+    "Multivitaminico pediatrico: PEDIAVIT ZINC Solucion oral en gotas": "https://cdn-icons-png.flaticon.com/512/3209/3209265.png",
+    "vitamina c: vita c en gotas": "https://cdn-icons-png.flaticon.com/512/2913/2913133.png",
+    "Vitamina C: VITA C en gotas": "https://cdn-icons-png.flaticon.com/512/2913/2913133.png",
+    "fumarato ferroso en suspensión": "https://cdn-icons-png.flaticon.com/512/3004/3004458.png",
+    "Fumarato Ferroso en Suspensión": "https://cdn-icons-png.flaticon.com/512/3004/3004458.png",
+    "vitamina d forte en gotas": "https://cdn-icons-png.flaticon.com/512/2913/2913133.png",
+    "Vitamina D Forte en gotas": "https://cdn-icons-png.flaticon.com/512/2913/2913133.png",
 }
 
 DEFAULT_IMG = "https://cdn-icons-png.flaticon.com/512/2966/2966334.png"
@@ -1160,4 +1160,3 @@ body::after {{
 """
 
 components.html(html, height=1400, scrolling=True)
-

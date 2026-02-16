@@ -688,10 +688,10 @@ body::after {{
     font-weight: 600;
 }}
 
-/* ==================== GRID 3x2 MEDICAMENTOS ==================== */
+/* ==================== GRID 2x2 MEDICAMENTOS ==================== */
 .grid {{
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 15px;
 }}
 
@@ -1115,7 +1115,7 @@ body::after {{
         </div>
     </div>
 
-    <!-- GRID 3x2 -->
+    <!-- GRID 2x2 -->
     <div class="grid">
         {cards_html}
     </div>

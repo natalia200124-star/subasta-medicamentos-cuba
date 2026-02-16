@@ -1158,5 +1158,4 @@ body::after {{
 </html>
 """
 
-components.html(html, height=1050, scrolling=False, key=f"dashboard_{count}")
-
+components.html(html, height=1400, scrolling=True)

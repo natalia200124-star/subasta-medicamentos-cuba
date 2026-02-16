@@ -20,7 +20,7 @@ st.set_page_config(
 # ==============================
 # AUTO-REFRESH
 # ==============================
-count = st_autorefresh(interval=8000, key="datarefresh")
+count = st_autorefresh(interval=15000, key="datarefresh")
 
 # ==============================
 # CARGA DE DATOS DESDE API (APPS SCRIPT)
@@ -143,15 +143,27 @@ lista_medicamentos = metas["medicamento"].tolist()
 # ==============================
 # NORMALIZACIÓN DONACIONES
 # ==============================
-if "Timestamp" in donaciones.columns:
+if "Marca temporal" in donaciones.columns:
+    donaciones.rename(columns={"Marca temporal": "fecha_hora"}, inplace=True)
+elif "Timestamp" in donaciones.columns:
     donaciones.rename(columns={"Timestamp": "fecha_hora"}, inplace=True)
 elif "timestamp" in donaciones.columns:
     donaciones.rename(columns={"timestamp": "fecha_hora"}, inplace=True)
 
-donaciones["donante_publico"] = donaciones.get("Contacto (opcional)", "").fillna("").astype(str).str.strip()
+# Obtener nombre público del donante
+if "Nombre o entidad donante para mostrar en el dashboard (opcional)" in donaciones.columns:
+    donaciones["donante_publico"] = donaciones["Nombre o entidad donante para mostrar en el dashboard (opcional)"].fillna("").astype(str).str.strip()
+elif "Contacto (opcional)" in donaciones.columns:
+    donaciones["donante_publico"] = donaciones["Contacto (opcional)"].fillna("").astype(str).str.strip()
+else:
+    donaciones["donante_publico"] = ""
+
 donaciones.loc[donaciones["donante_publico"] == "", "donante_publico"] = "Donante anónimo"
 donaciones.loc[donaciones["donante_publico"].str.lower() == "nan", "donante_publico"] = "Donante anónimo"
 
+# Eliminar columnas privadas del donante
+if "Nombre completo del donante (persona o entidad)" in donaciones.columns:
+    donaciones = donaciones.drop(columns=["Nombre completo del donante (persona o entidad)"])
 if "Donante" in donaciones.columns:
     donaciones = donaciones.drop(columns=["Donante"])
 
@@ -232,11 +244,17 @@ COLORES_MEDICAMENTOS = [
 # ==============================
 IMG_MAP = {
     "multivitaminas (gotas)": "https://img.icons8.com/?size=100&id=BayY6C34iXTA&format=png&color=000000",
+    "Multivitaminas (gotas)": "https://img.icons8.com/?size=100&id=BayY6C34iXTA&format=png&color=000000",
     "vitaminas c (gotas)": "https://img.icons8.com/?size=100&id=p514QFRInGPV&format=png&color=000000",
+    "Vitaminas C (gotas)": "https://img.icons8.com/?size=100&id=p514QFRInGPV&format=png&color=000000",
     "vitamina a y d2 (gotas)": "https://img.icons8.com/?size=100&id=56345&format=png&color=000000g",
+    "Vitamina A y D2 (gotas)": "https://img.icons8.com/?size=100&id=56345&format=png&color=000000g",
     "vitamina d2 forte (gotas)": "https://img.icons8.com/?size=100&id=aRMbtEpJbrOj&format=png&color=000000",
+    "Vitamina D2 forte (gotas)": "https://img.icons8.com/?size=100&id=aRMbtEpJbrOj&format=png&color=000000",
     "vitamina b (gotas)": "https://img.icons8.com/?size=100&id=2t4G6lB9hX4X&format=png&color=000000",
+    "Vitamina B (gotas)": "https://img.icons8.com/?size=100&id=2t4G6lB9hX4X&format=png&color=000000",
     "fumarato ferroso en suspensión": "https://img.icons8.com/?size=100&id=10XEPhqyfdJh&format=png&color=000000",
+    "Fumarato ferroso en suspensión": "https://img.icons8.com/?size=100&id=10XEPhqyfdJh&format=png&color=000000",
 }
 
 DEFAULT_IMG = "https://cdn-icons-png.flaticon.com/512/2966/2966334.png"
@@ -1051,8 +1069,7 @@ body::after {{
                 <div class="subtitle">{fecha_hoy}</div>
             </div>
         </div>
-        <div class="header-badge">🇨🇺 Cuba nos necesita</div>
-    </div>
+</div><div class="header-badge">Cuba nos necesita</div></div></div></div>
 
     <!-- SUMMARY -->
     <div class="summary">
@@ -1139,4 +1156,4 @@ body::after {{
 </html>
 """
 
-components.html(html, height=1050, scrolling=True)
+components.html(html, height=1400, scrolling=True)

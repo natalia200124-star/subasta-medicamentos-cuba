@@ -143,7 +143,7 @@ lista_medicamentos = metas["medicamento"].tolist()
 # ==============================
 # NORMALIZACIÓN DONACIONES
 # ==============================
-# Manejar "Marca temporal"
+# Manejar diferentes nombres de columna de timestamp
 if "Marca temporal" in donaciones.columns:
     donaciones.rename(columns={"Marca temporal": "fecha_hora"}, inplace=True)
 elif "Timestamp" in donaciones.columns:
@@ -162,7 +162,7 @@ else:
 donaciones.loc[donaciones["donante_publico"] == "", "donante_publico"] = "Donante anónimo"
 donaciones.loc[donaciones["donante_publico"].str.lower() == "nan", "donante_publico"] = "Donante anónimo"
 
-# Eliminar columna privada del donante
+# Eliminar columnas privadas
 if "Nombre completo del donante (persona o entidad)" in donaciones.columns:
     donaciones = donaciones.drop(columns=["Nombre completo del donante (persona o entidad)"])
 if "Donante" in donaciones.columns:

@@ -138,6 +138,13 @@ if "medicamento" not in metas.columns:
 
 metas["medicamento"] = metas["medicamento"].astype(str).str.strip()
 metas["meta"] = pd.to_numeric(metas["meta"], errors="coerce").fillna(0)
+
+# ==============================
+# FILTRAR: EXCLUIR VITAMINA A Y D2 Y VITAMINA B
+# ==============================
+medicamentos_excluir = ["Vitamina A y D2 (gotas)", "Vitamina B (gotas)"]
+metas = metas[~metas["medicamento"].isin(medicamentos_excluir)].copy()
+
 lista_medicamentos = metas["medicamento"].tolist()
 
 # ==============================
@@ -1155,4 +1162,3 @@ body::after {{
 """
 
 components.html(html, height=1400, scrolling=True)
-

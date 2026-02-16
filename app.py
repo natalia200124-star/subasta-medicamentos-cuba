@@ -124,6 +124,16 @@ donaciones.columns = [c.strip() for c in donaciones.columns]
 metas.columns = [c.strip().lower() for c in metas.columns]
 
 # ==============================
+# ✅ FILTRO: SOLO 4 MEDICAMENTOS ESPECÍFICOS
+# ==============================
+MEDICAMENTOS_PERMITIDOS = [
+    "Multivitaminico pediatrico: PEDIAVIT ZINC Solucion oral en gotas",
+    "Vitamina C: VITA C en gotas",
+    "Fumarato Ferroso en Suspensión",
+    "Vitamina D Forte en gotas"
+]
+
+# ==============================
 # NORMALIZACIÓN METAS
 # ==============================
 if "meta" not in metas.columns:
@@ -138,6 +148,9 @@ if "medicamento" not in metas.columns:
 
 metas["medicamento"] = metas["medicamento"].astype(str).str.strip()
 metas["meta"] = pd.to_numeric(metas["meta"], errors="coerce").fillna(0)
+
+# ✅ FILTRAR SOLO LOS 4 MEDICAMENTOS
+metas = metas[metas["medicamento"].isin(MEDICAMENTOS_PERMITIDOS)].copy()
 lista_medicamentos = metas["medicamento"].tolist()
 
 # ==============================
@@ -224,6 +237,7 @@ total_recaudado = avance["cantidad"].sum()
 total_meta = avance["meta"].sum()
 porcentaje_total = (total_recaudado / total_meta * 100) if total_meta>0 else 0
 fecha_hoy = datetime.now().strftime("%d de %B de %Y")
+
 # ==============================
 # PALETA DE COLORES PREMIUM HEALTHTECH
 # ==============================
@@ -232,31 +246,23 @@ COLORES_MEDICAMENTOS = [
     "#FF3D71",  # Rosa neón
     "#00FF9F",  # Verde esmeralda
     "#FFB800",  # Dorado brillante
-    "#B24BF3",  # Púrpura vibrante
-    "#FF6B35",  # Naranja cálido
 ]
 
-
 # ==============================
-# ✅ IMÁGENES DE MEDICAMENTOS - URLs VERIFICADAS MANUALMENTE
+# ✅ IMÁGENES DE MEDICAMENTOS - ACTUALIZADAS PARA LOS 4 ESPECÍFICOS
 # ==============================
 IMG_MAP = {
-    "multivitaminas (gotas)": "https://img.icons8.com/?size=100&id=BayY6C34iXTA&format=png&color=000000",
-    "Multivitaminas (gotas)": "https://img.icons8.com/?size=100&id=BayY6C34iXTA&format=png&color=000000",
-    "vitaminas c (gotas)": "https://img.icons8.com/?size=100&id=p514QFRInGPV&format=png&color=000000",
-    "Vitaminas C (gotas)": "https://img.icons8.com/?size=100&id=p514QFRInGPV&format=png&color=000000",
-    "vitamina a y d2 (gotas)": "https://img.icons8.com/?size=100&id=56345&format=png&color=000000g",
-    "Vitamina A y D2 (gotas)": "https://img.icons8.com/?size=100&id=56345&format=png&color=000000g",
-    "vitamina d2 forte (gotas)": "https://img.icons8.com/?size=100&id=aRMbtEpJbrOj&format=png&color=000000",
-    "Vitamina D2 forte (gotas)": "https://img.icons8.com/?size=100&id=aRMbtEpJbrOj&format=png&color=000000",
-    "vitamina b (gotas)": "https://img.icons8.com/?size=100&id=2t4G6lB9hX4X&format=png&color=000000",
-    "Vitamina B (gotas)": "https://img.icons8.com/?size=100&id=2t4G6lB9hX4X&format=png&color=000000",
+    "multivitaminico pediatrico: pediavit zinc solucion oral en gotas": "https://img.icons8.com/?size=100&id=BayY6C34iXTA&format=png&color=000000",
+    "Multivitaminico pediatrico: PEDIAVIT ZINC Solucion oral en gotas": "https://img.icons8.com/?size=100&id=BayY6C34iXTA&format=png&color=000000",
+    "vitamina c: vita c en gotas": "https://img.icons8.com/?size=100&id=p514QFRInGPV&format=png&color=000000",
+    "Vitamina C: VITA C en gotas": "https://img.icons8.com/?size=100&id=p514QFRInGPV&format=png&color=000000",
     "fumarato ferroso en suspensión": "https://img.icons8.com/?size=100&id=10XEPhqyfdJh&format=png&color=000000",
-    "Fumarato ferroso en suspensión": "https://img.icons8.com/?size=100&id=10XEPhqyfdJh&format=png&color=000000",
+    "Fumarato Ferroso en Suspensión": "https://img.icons8.com/?size=100&id=10XEPhqyfdJh&format=png&color=000000",
+    "vitamina d forte en gotas": "https://img.icons8.com/?size=100&id=aRMbtEpJbrOj&format=png&color=000000",
+    "Vitamina D Forte en gotas": "https://img.icons8.com/?size=100&id=aRMbtEpJbrOj&format=png&color=000000",
 }
 
 DEFAULT_IMG = "https://cdn-icons-png.flaticon.com/512/2966/2966334.png"
-
 
 # ==============================
 # MEDICAMENTO CRÍTICO Y AVANZADO
@@ -277,7 +283,6 @@ else:
     mas_av_nombre = "N/A"
     mas_av_pct = 0
 
-
 # ==============================
 # TARJETAS CON DISEÑO ULTRA PREMIUM
 # ==============================
@@ -296,7 +301,7 @@ for _, r in avance.iterrows():
     idx = lista_medicamentos.index(nombre_original) if nombre_original in lista_medicamentos else 0
     color_main = COLORES_MEDICAMENTOS[idx % len(COLORES_MEDICAMENTOS)]
 
-    img_url = IMG_MAP.get(nombre_lower, DEFAULT_IMG)
+    img_url = IMG_MAP.get(nombre_lower, IMG_MAP.get(nombre_original, DEFAULT_IMG))
     thermo = termometro_ultra_moderno_svg(pct, color=color_main)
 
     cards_html += f"""
@@ -357,7 +362,6 @@ for _, r in avance.iterrows():
 
     </div>
     """
-
 
 # ==============================
 # HTML ULTRA PREMIUM - DISEÑO REVOLUCIONARIO
@@ -681,10 +685,10 @@ body::after {{
     font-weight: 600;
 }}
 
-/* ==================== GRID 3x2 MEDICAMENTOS ==================== */
+/* ==================== GRID 2x2 MEDICAMENTOS ==================== */
 .grid {{
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 15px;
 }}
 
@@ -1023,7 +1027,7 @@ body::after {{
 
 /* ==================== RESPONSIVE ==================== */
 @media (max-width: 1400px) {{
-    .grid {{ grid-template-columns: repeat(3, 1fr); }}
+    .grid {{ grid-template-columns: repeat(2, 1fr); }}
 }}
 
 @media (max-width: 1024px) {{
@@ -1067,7 +1071,8 @@ body::after {{
                 <div class="subtitle">{fecha_hoy}</div>
             </div>
         </div>
-</div><div class="header-badge">Cuba nos necesita</div></div></div></div>
+        <div class="header-badge">Cuba nos necesita</div>
+    </div>
 
     <!-- SUMMARY -->
     <div class="summary">
@@ -1108,7 +1113,7 @@ body::after {{
         </div>
     </div>
 
-    <!-- GRID 3x2 -->
+    <!-- GRID 2x2 -->
     <div class="grid">
         {cards_html}
     </div>
@@ -1155,5 +1160,4 @@ body::after {{
 """
 
 components.html(html, height=1400, scrolling=True)
-
 

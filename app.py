@@ -150,16 +150,18 @@ elif "Timestamp" in donaciones.columns:
 elif "timestamp" in donaciones.columns:
     donaciones.rename(columns={"timestamp": "fecha_hora"}, inplace=True)
 
+# Obtener nombre público del donante
 if "Nombre o entidad donante para mostrar en el dashboard (opcional)" in donaciones.columns:
     donaciones["donante_publico"] = donaciones["Nombre o entidad donante para mostrar en el dashboard (opcional)"].fillna("").astype(str).str.strip()
 elif "Contacto (opcional)" in donaciones.columns:
-    donaciones["donante_publico"] = donaciones.get("Contacto (opcional)", "").fillna("").astype(str).str.strip()
+    donaciones["donante_publico"] = donaciones["Contacto (opcional)"].fillna("").astype(str).str.strip()
 else:
     donaciones["donante_publico"] = ""
 
 donaciones.loc[donaciones["donante_publico"] == "", "donante_publico"] = "Donante anónimo"
 donaciones.loc[donaciones["donante_publico"].str.lower() == "nan", "donante_publico"] = "Donante anónimo"
 
+# Eliminar columnas privadas del donante
 if "Nombre completo del donante (persona o entidad)" in donaciones.columns:
     donaciones = donaciones.drop(columns=["Nombre completo del donante (persona o entidad)"])
 if "Donante" in donaciones.columns:
@@ -1155,4 +1157,5 @@ body::after {{
 """
 
 components.html(html, height=1400, scrolling=True)
+
 

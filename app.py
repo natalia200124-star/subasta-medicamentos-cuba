@@ -190,7 +190,14 @@ hay_nueva_donacion = False
 
 if "fecha_hora" in donaciones.columns:
     try:
+        # Convertir a datetime y establecer zona horaria Colombia (America/Bogota)
         donaciones["fecha_hora"] = pd.to_datetime(donaciones["fecha_hora"].astype(str).str.strip(), dayfirst=True, errors="coerce")
+        
+        # Si viene en UTC, convertir a hora de Colombia
+        if donaciones["fecha_hora"].dt.tz is None:
+            # Asumir que viene en UTC y convertir a Colombia
+            donaciones["fecha_hora"] = donaciones["fecha_hora"].dt.tz_localize('UTC').dt.tz_convert('America/Bogota')
+        
         donaciones_validas = donaciones.dropna(subset=["fecha_hora"])
         if len(donaciones_validas) > 0:
             fila_ultima = donaciones_validas.sort_values("fecha_hora", ascending=False).iloc[0]
@@ -205,6 +212,7 @@ if "fecha_hora" in donaciones.columns:
 
             ultimo_donante = fila_ultima["donante_publico"]
             ultimo_monto = sum([float(fila_ultima[med]) for med in lista_medicamentos])
+            # Mostrar hora en formato Colombia
             ultima_hora = fila_ultima["fecha_hora"].strftime("%H:%M:%S")
     except Exception as e:
         print(f"Error procesando última donación: {e}")
